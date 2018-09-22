@@ -7,6 +7,8 @@ from MasterRigger import renamerLibrary as name
 from MasterRigger import attributeManipulation as attr
 reload(name)
 
+print 'test'
+
 LETTERS_INDEX = {index: letter for index, letter in
                  enumerate(ascii_uppercase, start=1)}
 
