@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 import pprint  # only for testing purposes, remove when completed
 from string import ascii_uppercase
-from MasterRigger import curve_assignment as crv
-from MasterRigger import basicTools as tool
-from MasterRigger import renamerLibrary as name
-from MasterRigger import attributeManipulation as attr
+from master_rigger import curve_assignment as crv
+from master_rigger import basicTools as tool
+from master_rigger import renamerLibrary as name
+from master_rigger import attributeManipulation as attr
+from master_rigger import createNodeLibrary as node
 reload(name)
 
-print 'test'
 
 LETTERS_INDEX = {index: letter for index, letter in
                  enumerate(ascii_uppercase, start=1)}
@@ -33,6 +33,17 @@ side_to_color = {
     'C': 'yellow',
     'center': 'yellow',
     'ctr': 'yellow'
+}
+
+module_attribute_dict = {
+    'IKFK': ['double', 0, 1, 0, True, None],
+    'bendyIK': ['double', 0, 1, 0, True, None],
+}
+ik_end_attr_list = ['stretchy', 'foreLimbTwist', 'secondaryVisibility']
+ik_end_attribute_dict = {
+    'stretchy': ['double', 0, 1, 0, True, None],
+    'foreLimbTwist': ['double', 0, 1, .3, True, None],
+    'secondaryVisibility': ['bool', None, None, 0, False, None],
 }
 
 other_parts = []
@@ -150,6 +161,17 @@ def create_limb_locators(prefix='L', limb_type='arm'):
                 # resetting the index counter between limb parts
                 i = 1.0
 
+    # Creating a hand locator to aim the joints and controls
+    hand_loc = cmds.duplicate(pivot_locator_list[-1],
+                              name=prefix + 'hand_orient_LOC')[0]
+    cmds.parent(hand_loc, pivot_locator_list[-1])
+    cmds.setAttr(hand_loc + '.translateX', 2)
+    cmds.setAttr(hand_loc + '.localScaleX', 0.5)
+    cmds.setAttr(hand_loc + '.localScaleY', 0.5)
+    cmds.setAttr(hand_loc + '.localScaleZ', 0.5)
+    attr.lock_hide(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, objects=[hand_loc])
+    limb_locator_list.append(hand_loc)
+
     # Creating a locator for the PV position
 
     # Obtaining the midpoint locator
@@ -186,6 +208,10 @@ def create_limb_locators(prefix='L', limb_type='arm'):
                        aimVector=[0, 0, 1], upVector=[0, 1, 0])
     pv_locator_list.append(pv_loc)
 
+    # Adding the hand locator to the pivot list for the IKFK system after the IK
+    # constraint setup is made to not vary the code
+    pivot_locator_list.append(hand_loc)
+
 
 def create_limb_joints(prefix='L', limb_type='arm', ):
 
@@ -198,14 +224,16 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
         pass  # Add other_parts to this, but only after other parts are added
 
     cmds.select(clear=True)
+    limb_bone_list = []
     for loc in limb_locator_list:
         locator_position = cmds.getAttr(loc + '.worldPosition[0]')[0]
-        cmds.joint(name=loc.replace('LOC', 'BONE'),
-                   position=[locator_position[0],
-                             locator_position[1],
-                             locator_position[2]])
+        bone = cmds.joint(name=loc.replace('LOC', 'BONE'),
+                          position=[locator_position[0],
+                          locator_position[1],
+                          locator_position[2]])
+        limb_bone_list.append(bone)
     # Orient Bones
-    cmds.joint(limb_locator_list[0].replace('LOC', 'BONE'),
+    cmds.joint(limb_bone_list[0],
                edit=True,
                orientJoint='xzy',
                secondaryAxisOrient='yup',
@@ -221,6 +249,8 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                           position=[locator_position[0],
                                     locator_position[1],
                                     locator_position[2]])
+        if loc == pivot_locator_list[-1]:
+            continue
         fk_joints_list.append(bone)
         if i == 0:
             fk_origin = bone
@@ -239,9 +269,11 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                                          scope='selection',
                                          input_object=ik_origin)
     ik_joints_list = name.clear_end_digits(input_object=ik_joints)
+    del(ik_joints_list[-1])
 
     # FK Controls
     fk_parent = None
+    fk_ctrl_list = []
     for ctrl in fk_joints_list:
         if ctrl == fk_joints_list[-1]:
             fk_scnd_control = cmds.group(empty=True,
@@ -260,6 +292,17 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
 
             cmds.xform(fk_scnd_control + '.cv[0:]', scale=[1.5, 1.5, 1.5])
             cmds.xform(fk_control + '.cv[0:]', scale=[1.3, 1.3, 1.3])
+            attr.lock_hide(0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+                           objects=[fk_control, fk_scnd_control])
+            attr.create_attr('secondaryVisibility',
+                             attribute_type='bool',
+                             input_object=fk_control,
+                             default_value=0,
+                             keyable=False)
+            cmds.connectAttr(fk_control + '.secondaryVisibility',
+                             fk_scnd_shape + '.v')
+
+            fk_ctrl_list.append(fk_scnd_control)
         else:
             fk_control = cmds.group(empty=True,
                                     name=ctrl.replace('JNT', 'CTRL'))
@@ -269,10 +312,14 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                                 shape_offset=[0, 0, 90])
 
             cmds.xform(fk_control + '.cv[0:]', scale=[1.3, 1.3, 1.3])
+            fk_ctrl_list.append(fk_control)
         fk_offset = tool.create_offset(input_object=fk_control)
         tool.match_transformations(source=ctrl, target=fk_offset)
+        attr.lock_hide(0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+                       objects=[fk_control])
         if fk_parent:
             cmds.parent(fk_offset, fk_parent)
+
         fk_parent = fk_control
 
     # IK Controls
@@ -300,12 +347,91 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                                           input_object=ik_pv_control)
     ik_pv_control_offset = tool.create_offset(input_object=ik_pv_space_ctrl)
 
+    cmds.xform(ik_scnd_control + '.cv[0:]', scale=[2.1, 2.1, 2.1])
+    cmds.xform(ik_control + '.cv[0:]', scale=[1.85, 1.85, 1.85])
+
     tool.match_transformations(source=ik_joints_list[-1],
                                target=ik_control_offset)
     tool.match_transformations(source=pv_locator_list[0],
                                target=ik_pv_control_offset)
 
+    # Deleting the placement pv arrow
+    cmds.delete('%s_%s_pv_LOC' % (prefix, limb_parts[1]))
+
+    # Creating FK control constraints
+    for ctrl in fk_ctrl_list:
+        suffix = 'CTRL'
+        if 'SCND' in ctrl:
+            suffix = 'SCND_CTRL'
+        cmds.parentConstraint(ctrl, ctrl.replace(suffix, 'JNT'))
+
+    ik_handle = cmds.ikHandle(startJoint=ik_joints_list[0],
+                              endEffector=ik_joints_list[-1],
+                              solver='ikRPsolver',
+                              name='%s_%s_IKH' % (prefix, limb_type))[0]
+    cmds.poleVectorConstraint(ik_pv_control, ik_handle)
+    cmds.parentConstraint(ik_scnd_control, ik_handle)
+    cmds.orientConstraint(ik_scnd_control, ik_control.replace('CTRL', 'JNT'))
+
+    # Constraining driver joints to bones
+    ikfk_constraint_list = []
+    for jnt in range(3):
+        ikfk_constraint = cmds.parentConstraint(fk_joints_list[jnt],
+                                                ik_joints_list[jnt],
+                                                pivot_locator_list[jnt].replace
+                                                ('LOC', 'BONE'),
+                                                maintainOffset=True)[0]
+        ikfk_constraint_list.append(ikfk_constraint)
+
+    # Creating a module node for IKFK passthrough attribute.  Will connect to
+    # hand control later, but offers a usable switch now.
+    module_node = cmds.group(empty=True, name='%s_%s_MOD' % (prefix, limb_type))
+    attr.lock_hide(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, objects=[module_node])
+    for attribute in module_attribute_dict:
+        attr.create_attr(attribute,
+                         attribute_type=module_attribute_dict[attribute][0],
+                         input_object=module_node,
+                         min_value=module_attribute_dict[attribute][1],
+                         max_value=module_attribute_dict[attribute][2],
+                         default_value=module_attribute_dict[attribute][3],
+                         keyable=module_attribute_dict[attribute][4],
+                         enum_names=module_attribute_dict[attribute][5])
+
+    # Building connection system
+
+    ikfk_rev = node.create_node('REV', name='%s_%s_IKFK' % (prefix, limb_type))
+    cmds.connectAttr(module_node + '.IKFK', ikfk_rev + '.inputX')
+    for constraint in ikfk_constraint_list:
+        weight_0_attr = cmds.listAttr(constraint)[-2]
+        weight_1_attr = cmds.listAttr(constraint)[-1]
+
+        cmds.connectAttr(module_node + '.IKFK', '%s.%s'
+                         % (constraint, weight_1_attr))
+        cmds.connectAttr(ikfk_rev + '.outputX', '%s.%s'
+                         % (constraint, weight_0_attr))
+
+    for attribute in ik_end_attr_list:
+        attr.create_attr(attribute,
+                         attribute_type=ik_end_attribute_dict[attribute][0],
+                         input_object=ik_control,
+                         min_value=ik_end_attribute_dict[attribute][1],
+                         max_value=ik_end_attribute_dict[attribute][2],
+                         default_value=ik_end_attribute_dict[attribute][3],
+                         keyable=ik_end_attribute_dict[attribute][4],
+                         enum_names=ik_end_attribute_dict[attribute][5])
+
+    cmds.connectAttr(ik_control + '.secondaryVisibility', ik_scnd_shape + '.v')
+    attr.lock_hide(0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+                   objects=[ik_control, ik_scnd_control])
+    attr.lock_hide(0, 0, 0, 1, 1, 1, 1, 1, 1, 1, objects=[ik_pv_control])
+
+
+
 # Build dictionary of limb part names as keys and the in-between joints as a
 # list
 # Build locators based on all the keys (parts), and groups with handles visible
 # for the extra limb joints in reference mode
+
+# In an input/output node, have the IKFK attribute, but the node is not
+# accessible.  Later, connect the IKFK attribute from the hand to the node for
+# accessibility and plausible function without a hand.

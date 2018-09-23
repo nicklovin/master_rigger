@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 from string import ascii_uppercase
-from MasterRigger import curve_assignment as crv
-from MasterRigger import attributeManipulation as attr
-from MasterRigger import createNodeLibrary as node
+from master_rigger import curve_assignment as crv
+from master_rigger import attributeManipulation as attr
+from master_rigger import createNodeLibrary as node
 
 # Letters for finger enumeration
 LETTERS_INDEX = {index: letter for index, letter in
