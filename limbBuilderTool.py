@@ -7,6 +7,8 @@ from master_rigger import renamerLibrary as name
 from master_rigger import attributeManipulation as attr
 from master_rigger import createNodeLibrary as node
 reload(name)
+reload(tool)
+reload(node)
 
 
 LETTERS_INDEX = {index: letter for index, letter in
@@ -48,7 +50,11 @@ ik_end_attribute_dict = {
 }
 
 other_parts = []
-
+fk_joints_list = []
+fk_ctrl_offset = []
+ik_joints_list = []
+ik_ctrl_grp_list = []
+limb_bone_list = []
 limb_dict = {}
 
 
@@ -225,7 +231,6 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
         pass  # Add other_parts to this, but only after other parts are added
 
     cmds.select(clear=True)
-    limb_bone_list = []
     for loc in limb_locator_list:
         locator_position = cmds.getAttr(loc + '.worldPosition[0]')[0]
         bone = cmds.joint(name=loc.replace('LOC', 'BONE'),
@@ -285,7 +290,6 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
     # FK Joint System
     i = 0
     fk_origin = None
-    fk_joints_list = []
     cmds.select(clear=True)
     for loc in pivot_locator_list:
         locator_position = cmds.getAttr(loc + '.worldPosition[0]')[0]
@@ -313,7 +317,9 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
                                          replace_output='IK',
                                          scope='selection',
                                          input_object=ik_origin)
-    ik_joints_list = name.clear_end_digits(input_object=ik_joints)
+    for jnt in ik_joints:
+        ik_joint_name = name.clear_end_digits(input_object=[jnt])[0]
+        ik_joints_list.append(ik_joint_name)
     del(ik_joints_list[-1])
 
     # FK Controls
@@ -362,6 +368,8 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
         tool.match_transformations(source=ctrl, target=fk_offset)
         attr.lock_hide(0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
                        objects=[fk_control])
+        if limb_parts[0] in fk_offset:
+            fk_ctrl_offset.append(fk_offset)
         if fk_parent:
             cmds.parent(fk_offset, fk_parent)
 
@@ -380,17 +388,16 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
     crv.add_curve_shape(shape_choice='box',
                         transform_node=ik_control,
                         color=side_to_color[prefix])
-    ik_space_ctrl = tool.create_offset(suffix='SPACE', input_object=ik_control)
-    ik_control_offset = tool.create_offset(input_object=ik_space_ctrl)
+    ik_control_offset = tool.create_offset(input_object=ik_control)
+    tool.create_offset(suffix='SPACE', input_object=ik_control)
 
     ik_pv_control = cmds.group(empty=True,
                                name=pv_locator_list[0].replace('LOC', 'CTRL'))
     crv.add_curve_shape(shape_choice='diamond',
                         transform_node=ik_pv_control,
                         color=side_to_color[prefix])
-    ik_pv_space_ctrl = tool.create_offset(suffix='SPACE',
-                                          input_object=ik_pv_control)
-    ik_pv_control_offset = tool.create_offset(input_object=ik_pv_space_ctrl)
+    ik_pv_control_offset = tool.create_offset(input_object=ik_pv_control)
+    tool.create_offset(suffix='SPACE', input_object=ik_pv_control)
 
     cmds.xform(ik_scnd_control + '.cv[0:]', scale=[2.1, 2.1, 2.1])
     cmds.xform(ik_control + '.cv[0:]', scale=[1.85, 1.85, 1.85])
@@ -399,6 +406,10 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
                                target=ik_control_offset)
     tool.match_transformations(source=pv_locator_list[0],
                                target=ik_pv_control_offset)
+
+    ik_ctrl_grp = cmds.group(ik_control_offset, ik_pv_control_offset,
+                             name='%s_%s_IK_CTRL_GRP' % (prefix, limb_type))
+    ik_ctrl_grp_list.append(ik_ctrl_grp)
 
     # Deleting the placement pv arrow
     cmds.delete('%s_%s_pv_LOC' % (prefix, limb_parts[1]))
@@ -496,15 +507,52 @@ def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
         cmds.connectAttr(module_node + '.foreLimbTwist', twist_mdl + '.input2')
         for bone in twist_jnt_list:
             cmds.connectAttr(twist_mdl + '.output', bone + '.rotateX')
-            cube_test = cmds.polyCube()
-            cmds.parent(cube_test, bone)
 
 
-# Build dictionary of limb part names as keys and the in-between joints as a
-# list
-# Build locators based on all the keys (parts), and groups with handles visible
-# for the extra limb joints in reference mode
+def limb_in_out_module(prefix='L', limb_type='arm'):
 
-# In an input/output node, have the IKFK attribute, but the node is not
-# accessible.  Later, connect the IKFK attribute from the hand to the node for
-# accessibility and plausible function without a hand.
+    if limb_type == 'arm':
+        limb_parts = arm_parts
+    elif limb_type == 'leg':
+        limb_parts = leg_parts
+    else:
+        limb_parts = None
+        pass  # Add other_parts to this, but only after other parts are added
+
+    input_node = tool.create_offset(suffix='temp',
+                                    input_object=pivot_locator_list[0].replace
+                                    ('LOC', 'BONE'))
+    output_node = tool.create_child(suffix='temp',
+                                    input_object=pivot_locator_list[2].replace
+                                    ('LOC', 'BONE'))
+    input_module = cmds.rename(input_node, '%s_%s_input_MOD'
+                               % (prefix, limb_type))
+    output_srt = cmds.rename(output_node, '%s_%s_output_SRT'
+                             % (prefix, limb_type))
+    output_module = cmds.duplicate(input_module,
+                                   name=input_module.replace('input', 'output'),
+                                   parentOnly=True)[0]
+
+    output_dcpm = node.create_node('DCPM', name=output_srt)
+    cmds.connectAttr(output_srt + '.worldMatrix[0]',
+                     output_dcpm + '.inputMatrix')
+    cmds.connectAttr(output_dcpm + '.outputTranslate',
+                     output_module + '.translate')
+    cmds.connectAttr(output_dcpm + '.outputRotate',
+                     output_module + '.rotate')
+    cmds.connectAttr(output_dcpm + '.outputScale',
+                     output_module + '.scale')
+
+    # Putting module parts together
+    cmds.parent(input_module, output_module, '%s_%s_MOD' % (prefix, limb_type))
+    # Removing setup trash
+    cmds.delete(limb_locator_list, '%s_%s_pv_GRP' % (prefix, limb_parts[1]))
+    # Putting parts into the input module
+    ctrl_grp = cmds.group(ik_ctrl_grp_list, fk_ctrl_offset,
+                          name='%s_%s_CTRL_GRP' % (prefix, limb_type))
+    jnt_grp = cmds.group(fk_joints_list[0], ik_joints_list[0],
+                         name='%s_%s_JNT_GRP' % (prefix, limb_type))
+    cmds.group(limb_bone_list[0], name='%s_%s_BONE_GRP' % (prefix, limb_type))
+    parts_grp = cmds.group('%s_%s_IKH' % (prefix, limb_type),
+                           name='%s_%s_PARTS_GRP' % (prefix, limb_type))
+    cmds.parent(ctrl_grp, jnt_grp, parts_grp, input_module)
