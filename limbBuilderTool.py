@@ -35,14 +35,15 @@ side_to_color = {
     'ctr': 'yellow'
 }
 
+module_attr_list = ['IKFK', 'bendyIK', 'foreLimbTwist']
 module_attribute_dict = {
     'IKFK': ['double', 0, 1, 0, True, None],
     'bendyIK': ['double', 0, 1, 0, True, None],
+    'foreLimbTwist': ['double', 0, 1, 0.75, True, None],
 }
-ik_end_attr_list = ['stretchy', 'foreLimbTwist', 'secondaryVisibility']
+ik_end_attr_list = ['stretchy', 'secondaryVisibility']
 ik_end_attribute_dict = {
     'stretchy': ['double', 0, 1, 0, True, None],
-    'foreLimbTwist': ['double', 0, 1, .3, True, None],
     'secondaryVisibility': ['bool', None, None, 0, False, None],
 }
 
@@ -213,7 +214,7 @@ def create_limb_locators(prefix='L', limb_type='arm'):
     pivot_locator_list.append(hand_loc)
 
 
-def create_limb_joints(prefix='L', limb_type='arm', ):
+def create_limb_joints(prefix='L', limb_type='arm', auto_twist=True):
 
     if limb_type == 'arm':
         limb_parts = arm_parts
@@ -239,6 +240,49 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                secondaryAxisOrient='yup',
                children=True)
 
+    # Separating extra joints from pivots to avoid cycles on twists.  Adding
+    # x-based point constraints to keep the extra joints from overextending
+    # when switching between IKFK.
+    pivot_bone_list = []
+    for bone in pivot_locator_list:
+        pivot_bone_list.append(bone.replace('LOC', 'BONE'))
+
+    bone_parent = None
+    if len(limb_dict[limb_parts[0]]) > 1:
+
+        for bone in pivot_bone_list:
+            if bone == pivot_bone_list[-1]:
+                break
+            if bone_parent:
+                cmds.parent(bone, bone_parent)
+            bone_parent = bone
+
+        i = 0
+        j = -1
+        bone_count_factor = 1.0 / float(len(limb_dict[limb_parts[0]]))
+        bone_position_factor = bone_count_factor
+        for bone in limb_bone_list:
+            if bone in pivot_bone_list:
+                i = i + 1
+                j = j + 1
+                bone_position_factor = bone_count_factor
+                continue
+            bone_position_constraint = \
+                cmds.pointConstraint(pivot_bone_list[j],
+                                     pivot_bone_list[i],
+                                     bone,
+                                     maintainOffset=False)[0]
+
+            weight_0_attr = cmds.listAttr(bone_position_constraint)[-2]
+            weight_1_attr = cmds.listAttr(bone_position_constraint)[-1]
+
+            cmds.setAttr('%s.%s' % (bone_position_constraint, weight_1_attr),
+                         bone_position_factor)
+            cmds.setAttr('%s.%s' % (bone_position_constraint, weight_0_attr),
+                         1 - bone_position_factor)
+            bone_position_factor = bone_position_factor + bone_count_factor
+
+    # FK Joint System
     i = 0
     fk_origin = None
     fk_joints_list = []
@@ -263,6 +307,7 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                secondaryAxisOrient='yup',
                children=True)
 
+    # IK Joint System
     ik_origin = cmds.duplicate(fk_origin, renameChildren=True)
     ik_joints = name.search_replace_name(search_input='FK',
                                          replace_output='IK',
@@ -387,7 +432,7 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
     # hand control later, but offers a usable switch now.
     module_node = cmds.group(empty=True, name='%s_%s_MOD' % (prefix, limb_type))
     attr.lock_hide(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, objects=[module_node])
-    for attribute in module_attribute_dict:
+    for attribute in module_attr_list:
         attr.create_attr(attribute,
                          attribute_type=module_attribute_dict[attribute][0],
                          input_object=module_node,
@@ -425,6 +470,34 @@ def create_limb_joints(prefix='L', limb_type='arm', ):
                    objects=[ik_control, ik_scnd_control])
     attr.lock_hide(0, 0, 0, 1, 1, 1, 1, 1, 1, 1, objects=[ik_pv_control])
 
+    if auto_twist and len(limb_dict[limb_parts[0]]) > 1:
+        twist_jnt_count = len(limb_dict[limb_parts[1]]) - 1
+        twist_jnt_count_fraction = 1.0 / float(len(limb_dict[limb_parts[1]]))
+        twist_jnt_index_list = []
+        for jnt in range(twist_jnt_count):
+            list_jnt = -3 - jnt
+            twist_jnt_index_list.append(list_jnt)
+        twist_jnt_list = []
+        for index in twist_jnt_index_list:
+            twist_jnt = limb_bone_list[index]
+            twist_jnt_list.append(twist_jnt)
+
+        twist_mdl = node.create_node('MDL', name='%s_%s_twist_factor'
+                                                 % (prefix, limb_parts[2]))
+        twist_limit_factor_mdl = \
+            node.create_node('MDL', name='%s_%s_twist_limit_factor'
+                                         % (prefix, limb_parts[2]))
+        cmds.connectAttr(limb_bone_list[-2] + '.rotateX',
+                         twist_limit_factor_mdl + '.input1')
+        cmds.setAttr(twist_limit_factor_mdl + '.input2',
+                     twist_jnt_count_fraction)
+        cmds.connectAttr(twist_limit_factor_mdl + '.output',
+                         twist_mdl + '.input1')
+        cmds.connectAttr(module_node + '.foreLimbTwist', twist_mdl + '.input2')
+        for bone in twist_jnt_list:
+            cmds.connectAttr(twist_mdl + '.output', bone + '.rotateX')
+            cube_test = cmds.polyCube()
+            cmds.parent(cube_test, bone)
 
 
 # Build dictionary of limb part names as keys and the in-between joints as a
