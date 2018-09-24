@@ -50,6 +50,49 @@ def create_offset(suffix='ZERO', input_object=None):
     return offset_node
 
 
+def create_child(suffix='CNS', input_object=None):
+    """
+    Creates an offset transform node for an object.
+
+    Args:
+        suffix (str): Assign a suffix name to the offset node.  Default is
+            'ZERO', and will automatically change to 'OFS' if a 'ZERO' node is
+            selected to allow for multiple levels of offset.
+        selection (bool): Assign if function performs based on selection.
+        input_object (str): Assign object to be given the offset node.  Only
+        works if
+            selection is False.
+
+    Returns:
+        offset_node (str): Name of the node for futher use.
+
+    """
+    if not input_object:
+        input_object = cmds.ls(selection=True)[0]
+
+    child_node = cmds.group(empty=True, name='%s_%s' % (input_object, suffix))
+
+    object_position = cmds.xform(input_object,
+                                 query=True,
+                                 translation=True,
+                                 worldSpace=True)
+    object_orientation = cmds.xform(input_object,
+                                    query=True,
+                                    rotation=True,
+                                    worldSpace=True)
+
+    cmds.setAttr(child_node + '.tx', object_position[0])
+    cmds.setAttr(child_node + '.ty', object_position[1])
+    cmds.setAttr(child_node + '.tz', object_position[2])
+    cmds.setAttr(child_node + '.rx', object_orientation[0])
+    cmds.setAttr(child_node + '.ry', object_orientation[1])
+    cmds.setAttr(child_node + '.rz', object_orientation[2])
+
+    cmds.parent(child_node, input_object)
+
+    return child_node
+
+
 def match_transformations(translation=True, rotation=True, scale=False,
                           source=None, target=None):
     """

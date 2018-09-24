@@ -151,7 +151,7 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
 
 
 def set_suffix(input_suffix, add=False, replace=False, remove=False,
-               selection=True, list_input=[]):
+               list_input=[]):
     """
     Prefix setting tool.  Allows for a suffix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
@@ -164,9 +164,7 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
         Procedure Type Arguments: 
             add (bool): Assign the function to add a new suffix
             replace (bool): Assign the function to replace an existing suffix 
-            remove (bool): Assign the function to remove an existing suffix. 
-        selection (bool): Confirm that the function performs based on the 
-            selection list. 
+            remove (bool): Assign the function to remove an existing suffix.
         list_input (list[str]): Allows for a provided list to be performed on.  
             Only works if selection flag is False. 
 
@@ -179,26 +177,29 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
         cmds.error('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
-    if selection:
+    if not list_input:
         name_list = cmds.ls(selection=True)
     else:
         name_list = list_input
 
+    name_return_list = []
+
     if add:
         for i in name_list:
-            cmds.rename(i, '%s_%s' % (i, input_suffix))
+            new_name = cmds.rename(i, '%s_%s' % (i, input_suffix))
+            name_return_list.append(new_name)
 
     if replace:
         kill_length_list = []
         for obj in name_list:
             kill_length = obj.rfind('_')
             kill_length_list.append(kill_length)
-        print kill_length_list
 
         number = 0
         for i in name_list:
-            cmds.rename(i, i.replace(i[kill_length_list[number]:],
-                                     input_suffix))
+            new_name = cmds.rename(i, i.replace(i[kill_length_list[number]:],
+                                                input_suffix))
+            name_return_list.append(new_name)
             number = number + 1
 
     if remove:
@@ -206,15 +207,18 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
         for obj in name_list:
             kill_length = obj.rfind('_')
             kill_length_list.append(kill_length)
-        print kill_length_list
 
         number = 0
         for i in name_list:
             if i[kill_length_list[number]:] == '_':
                 cmds.rename(i, i[0:kill_length_list[number]])
             else:
-                cmds.rename(i, i.replace(i[kill_length_list[number]:], ''))
+                new_name = \
+                    cmds.rename(i, i.replace(i[kill_length_list[number]:], ''))
+                name_return_list.append(new_name)
             number = number + 1
+
+    return name_return_list
 
 
 def search_replace_name(search_input, replace_output, scope='selection',
