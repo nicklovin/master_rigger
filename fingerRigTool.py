@@ -13,6 +13,9 @@ fingers_dict = {}
 hand_control = None
 
 
+def build_hand_module():
+
+
 def build_finger_library(finger_count=4, thumb=True, segment_count=3,
                          prefix='C'):
     """
@@ -145,7 +148,7 @@ def create_finger_joints(prefix='C'):
 
 
 def create_finger_controls(shape_type='box', offset=False, limit_attrs=False,
-                           hand_ctrl=True, prefix='C'):
+                           hand_ctrl=True, prefix='C', hand_shape='triangle'):
     """
     Creates controls for the joints of the finger.
 
@@ -210,7 +213,7 @@ def create_finger_controls(shape_type='box', offset=False, limit_attrs=False,
     
     if hand_ctrl:
         hand_control = cmds.group(empty=True, name=prefix + '_hand_CTRL')
-        crv.add_curve_shape(shape_choice='triangle',
+        crv.add_curve_shape(shape_choice=hand_shape,
                             transform_node=hand_control)
         hand_position = cmds.xform(hand_control.replace('CTRL', 'BONE'),
                                    query=True,
