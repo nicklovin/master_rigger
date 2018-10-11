@@ -1,7 +1,7 @@
 import maya.cmds as cmds
 
 
-def create_offset(suffix='ZERO', input_object=None):
+def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
     """
     Creates an offset transform node for an object.
 
@@ -9,10 +9,9 @@ def create_offset(suffix='ZERO', input_object=None):
         suffix (str): Assign a suffix name to the offset node.  Default is
             'ZERO', and will automatically change to 'OFS' if a 'ZERO' node is
             selected to allow for multiple levels of offset.
-        selection (bool): Assign if function performs based on selection.
-        input_object (str): Assign object to be given the offset node.  Only
-        works if
-            selection is False.
+        input_object (str): Assign object to be given the offset node.
+        invert_scale (str): Choose an axis to invert with a scale of -1 to allow
+            for orientation symmetry.  Expected inputs are x, y, or z.
 
     Returns:
         offset_node (str): Name of the node for futher use.
@@ -44,6 +43,18 @@ def create_offset(suffix='ZERO', input_object=None):
     cmds.setAttr(offset_node + '.rz', object_orientation[2])
 
     cmds.parent(input_object, offset_node)
+
+    if invert_scale:
+        if invert_scale == 'x':
+            cmds.setAttr(offset_node + '.sx', -1)
+        elif invert_scale == 'y':
+            cmds.setAttr(offset_node + '.sy', -1)
+        elif invert_scale == 'z':
+            cmds.setAttr(offset_node + '.sz', -1)
+        else:
+            cmds.warning('Improper input used for inverse_scale parameter!  '
+                         'Use "x", "y", or "z".')
+
     # Put offset node back into hierarchy if one existed
     if sel_parent:
         cmds.parent(offset_node, sel_parent)
@@ -58,10 +69,7 @@ def create_child(suffix='CNS', input_object=None):
         suffix (str): Assign a suffix name to the offset node.  Default is
             'ZERO', and will automatically change to 'OFS' if a 'ZERO' node is
             selected to allow for multiple levels of offset.
-        selection (bool): Assign if function performs based on selection.
-        input_object (str): Assign object to be given the offset node.  Only
-        works if
-            selection is False.
+        input_object (str): Assign object to be given the offset node.
 
     Returns:
         offset_node (str): Name of the node for futher use.
