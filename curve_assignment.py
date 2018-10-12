@@ -215,7 +215,7 @@ def set_control_color(rgb_input, input_object=None):
 
 
 def add_curve_shape(shape_choice, transform_node=None, color=None,
-                    off_color=False, shape_offset=False):
+                    off_color=False, shape_offset=[0, 0, 0]):
     """
     Creates a shape node that is input into a transform node.  This will turn a
     transform node into a control shape, allowing for more flexibility in
@@ -278,7 +278,7 @@ def add_curve_shape(shape_choice, transform_node=None, color=None,
                          'value list like so: [float, float, float].')
             return
 
-    if shape_offset:
+    if shape_offset != [0, 0, 0]:
         cmds.xform(transform_node + '.cv[0:]', rotation=shape_offset)
 
     shape_name = cmds.rename(curve_shape, transform_node + 'Shape')
