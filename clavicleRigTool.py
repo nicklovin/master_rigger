@@ -2,6 +2,8 @@ import maya.cmds as cmds
 from master_rigger import renamerLibrary as name
 from master_rigger import curve_assignment as crv
 from master_rigger import basicTools as tool
+from master_rigger import attributeManipulation as attr
+from master_rigger import createNodeLibrary as node
 
 clav_starting_position = [[1, 16, 1], [3, 17, 0]]
 
@@ -28,20 +30,41 @@ def create_clav_locators(prefix='L',):
         clav_starting_position[0][0] = -clav_starting_position[0][0]
         clav_starting_position[1][0] = -clav_starting_position[1][0]
 
-    base_loc = cmds.spaceLocator(name=prefix + '_clav_LOC',
-                                 position=clav_starting_position[0])[0]
-    end_loc = cmds.spaceLocator(name=prefix + '_clav_END_LOC',
-                                position=clav_starting_position[1])[0]
+    base_loc = cmds.spaceLocator(name=prefix + '_clav_LOC')[0]
+    end_loc = cmds.spaceLocator(name=prefix + '_clav_END_LOC')[0]
+
+    cmds.xform(base_loc, translation=clav_starting_position[0])
+    cmds.xform(end_loc, translation=clav_starting_position[1])
 
     clav_locator_list = [base_loc, end_loc]
 
     cmds.parent(end_loc, base_loc)
+
+    clav_module = cmds.group(empty=True, name=prefix + '_clav_MOD')
+    for attribute in module_attr_list:
+        attr.create_attr(attribute,
+                         attribute_type=module_attribute_dict[attribute][0],
+                         input_object=clav_module,
+                         min_value=module_attribute_dict[attribute][1],
+                         max_value=module_attribute_dict[attribute][2],
+                         default_value=module_attribute_dict[attribute][3],
+                         keyable=module_attribute_dict[attribute][4],
+                         enum_names=module_attribute_dict[attribute][5])
+
+    attr.lock_hide(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, objects=[clav_module])
 
     return clav_locator_list
 
 
 def build_clav_system(locator_inputs, prefix='L', orient_symmetry=False,
                       fk_shape='ring', ik_shape='plus'):
+    input_node = tool.create_offset(suffix='temp',
+                                    input_object=locator_inputs[0])
+    input_mod = cmds.rename(input_node, prefix + '_clav_input_MOD')
+    output_mod = cmds.group(empty=True, name=prefix + '_clav_output_MOD')
+
+    clav_module = prefix + '_clav_MOD'
+    cmds.parent(input_mod, output_mod, clav_module)
 
     cmds.select(clear=True)
     clav_bone_list = []
@@ -101,3 +124,46 @@ def build_clav_system(locator_inputs, prefix='L', orient_symmetry=False,
     tool.match_transformations(source=ik_joints[-1], target=ik_offset)
 
     # Line if shape needs to be rotated to deal with perspective
+    attr.lock_hide(0, 0, 0, 1, 1, 1, 1, 1, 1, 1, objects=[ik_ctrl])
+    attr.lock_hide(0, 0, 0, 0, 0, 0, 1, 1, 1, 1, objects=[fk_ctrl])
+
+    # Connections
+    cmds.parentConstraint(fk_ctrl, fk_joints[0], maintainOffset=True)
+    cmds.parentConstraint(ik_ctrl, ik_handle, maintainOffset=True)
+
+    clav_ikfk = cmds.parentConstraint(fk_joints[0],
+                                      ik_joints[0],
+                                      clav_bone_list[0],
+                                      maintainOffset=True)[0]
+
+    ikfk_rev = node.create_node('REV', name=prefix + '_clav_IKFK')
+    weight_0_attr = cmds.listAttr(clav_ikfk)[-2]
+    weight_1_attr = cmds.listAttr(clav_ikfk)[-1]
+    cmds.connectAttr(clav_module + '.IKFK',
+                     '%s.%s' % (clav_ikfk, weight_1_attr))
+    cmds.connectAttr(clav_module + '.IKFK', ikfk_rev + '.inputX')
+    cmds.connectAttr(ikfk_rev + '.outputX',
+                     '%s.%s' % (clav_ikfk, weight_0_attr))
+
+    jnt_grp = cmds.group(ik_joints[0], fk_joints[0],
+                         name=prefix + '_clav_JNT_GRP')
+    bone_grp = cmds.group(clav_bone_list[0], name=prefix + '_clav_BONE_GRP')
+    ctrl_grp = cmds.group(ik_offset, fk_offset, name=prefix + '_clav_CTRL_GRP')
+    parts_grp = cmds.group(ik_handle, name=prefix + '_clav_PARTS_GRP')
+    cmds.parent(jnt_grp, bone_grp, ctrl_grp, parts_grp, input_mod)
+
+    output_node = tool.create_child(suffix='temp',
+                                    input_object=clav_bone_list[-1])
+    output_srt = cmds.rename(output_node, prefix + '_clav_output_SRT')
+
+    output_dcpm = node.create_node('DCPM', name=output_srt)
+    cmds.connectAttr(output_srt + '.worldMatrix[0]',
+                     output_dcpm + '.inputMatrix')
+    cmds.connectAttr(output_dcpm + '.outputTranslate',
+                     output_mod + '.translate')
+    cmds.connectAttr(output_dcpm + '.outputRotate',
+                     output_mod + '.rotate')
+    cmds.connectAttr(output_dcpm + '.outputScale',
+                     output_mod + '.scale')
+
+    cmds.delete(locator_inputs)
