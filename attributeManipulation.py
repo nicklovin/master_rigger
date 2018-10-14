@@ -13,25 +13,25 @@ def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
 
     Args:
         tx (int or bool): Assign status of attribute translateX,
-            0 or False perform action.
+            1 or True perform action.
         ty (int or bool): Assign status of attribute translateY,
-            0 or False perform action.
+            1 or True perform action.
         tz (int or bool): Assign status of attribute translateZ,
-            0 or False perform action.
+            1 or True perform action.
         rx (int or bool): Assign status of attribute rotateX,
-            0 or False perform action.
+            1 or True perform action.
         ry (int or bool): Assign status of attribute rotateY,
-            0 or False perform action.
+            1 or True perform action.
         rz (int or bool): Assign status of attribute rotateZ,
-            0 or False perform action.
+            1 or True perform action.
         sx (int or bool): Assign status of attribute scaleX,
-            0 or False perform action.
+            1 or True perform action.
         sy (int or bool): Assign status of attribute scaleY,
-            0 or False perform action.
+            1 or True perform action.
         sz (int or bool): Assign status of attribute scaleZ,
-            0 or False perform action.
+            1 or True perform action.
         v (int or bool): Assign status of attribute visibility,
-            0 or False perform action.
+            1 or True perform action.
         objects (list[str]): Assign object(s) to have attributes affected.
             Only works if selection=False.
         hide (bool): Assign if function should hide the locked attribute.
