@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 from PySide2 import QtWidgets, QtCore, QtGui
-
+# Force commit comment.
 
 attributes = ['.tx', '.ty', '.tz',
               '.rx', '.ry', '.rz',
