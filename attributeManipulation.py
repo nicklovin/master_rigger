@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+from PySide2 import QtWidgets, QtCore, QtGui
 
 
 attributes = ['.tx', '.ty', '.tz',
@@ -134,3 +135,89 @@ def create_attr(attribute_name, attribute_type, input_object=None,
              (min_value is None and max_value is not None):
             cmds.warning('Max and Min values will only be applied if both '
                          'arguments have values.')
+
+
+class AttributeWidget(QtWidgets.QFrame):
+
+    def __init__(self):
+        QtWidgets.QFrame.__init__(self)
+
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(1, 1, 1, 1)
+        self.layout().setSpacing(0)
+        self.layout().setAlignment(QtCore.Qt.AlignTop)
+
+        # Checklist:
+        #   - x, y, z checkboxes
+        #   - translate, rotate, scale, vis buttons
+        #   - custom attribute selection button
+        #   - lock/unlock, show/hide dropdowns
+
+        attribute_widget = QtWidgets.QWidget()
+        attribute_widget.setLayout(QtWidgets.QVBoxLayout())
+        attribute_widget.layout().setContentsMargins(2, 2, 2, 2)
+        attribute_widget.layout().setSpacing(5)
+        attribute_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                       QtWidgets.QSizePolicy.Fixed)
+        self.layout().addWidget(attribute_widget)
+
+        attribute_button_layout_1 = QtWidgets.QHBoxLayout()
+        attribute_button_layout_2 = QtWidgets.QHBoxLayout()
+        conditions_layout = QtWidgets.QHBoxLayout()
+        lock_unlock_layout = QtWidgets.QHBoxLayout()
+        show_hide_layout = QtWidgets.QHBoxLayout()
+
+        attribute_widget.layout().addLayout(attribute_button_layout_1)
+        attribute_widget.layout().addLayout(attribute_button_layout_2)
+        attribute_widget.layout().addLayout(conditions_layout)
+        attribute_widget.layout().addLayout(lock_unlock_layout)
+        attribute_widget.layout().addLayout(show_hide_layout)
+
+        translate_button = QtWidgets.QPushButton('Translation')
+        rotate_button = QtWidgets.QPushButton('Rotation')
+        scale_button = QtWidgets.QPushButton('Scale')
+        vis_button = QtWidgets.QPushButton('Vis')
+        selected_button = QtWidgets.QPushButton('Selected Attributes')
+
+        attribute_button_layout_1.addWidget(translate_button)
+        attribute_button_layout_1.addWidget(rotate_button)
+        attribute_button_layout_1.addWidget(scale_button)
+        attribute_button_layout_2.addWidget(vis_button)
+        attribute_button_layout_2.addWidget(selected_button)
+
+        x_checkbox = QtWidgets.QCheckBox('X')
+        y_checkbox = QtWidgets.QCheckBox('Y')
+        z_checkbox = QtWidgets.QCheckBox('Z')
+
+        conditions_layout.layout().addWidget(x_checkbox)
+        conditions_layout.layout().addWidget(y_checkbox)
+        conditions_layout.layout().addWidget(z_checkbox)
+
+        self.lock_case_group = QtWidgets.QButtonGroup()
+        self.lock_radio = QtWidgets.QRadioButton('Lock')
+        self.unlock_radio = QtWidgets.QRadioButton('Unlock')
+        self.lock_case_group.addButton(self.lock_radio)
+        self.lock_case_group.addButton(self.unlock_radio)
+
+        condition_divider = QtWidgets.QLabel('|')
+        divider_font = QtGui.QFont()
+        divider_font.setBold(True)
+        condition_divider.setFont(divider_font)
+        condition_divider.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+
+        self.hide_case_group = QtWidgets.QButtonGroup()
+        self.hide_radio = QtWidgets.QRadioButton('Hide')
+        self.show_radio = QtWidgets.QRadioButton('Show')
+        self.hide_case_group.addButton(self.hide_radio)
+        self.hide_case_group.addButton(self.show_radio)
+
+        self.lock_radio.setChecked(True)
+        self.hide_radio.setChecked(True)
+
+        lock_unlock_layout.addWidget(self.lock_radio)
+        lock_unlock_layout.addWidget(self.unlock_radio)
+        lock_unlock_layout.addWidget(condition_divider)
+        lock_unlock_layout.addWidget(self.hide_radio)
+        lock_unlock_layout.addWidget(self.show_radio)

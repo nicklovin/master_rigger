@@ -1,5 +1,5 @@
 from functools import partial
-from Qt import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore, QtGui
 import maya.cmds as cmds
 
 
@@ -8,68 +8,52 @@ class NickRiggingUI(QtWidgets.QDialog):
     window_name = "Nick's Auto-Rigging GUI"
 
     def __init__(self):
-        super(NickRiggingUI, self).__init__()
+        QtWidgets.QDialog.__init__(self)
+        self.setWindowTitle('Nick Auto-Rig Tool')
 
-        self.setWindowTitle('Playblast Shapes UI')
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(1, 1, 1, 1)
+        self.layout().setSpacing(0)
 
-        self.build_ui()
+        tab_layout = QtWidgets.QHBoxLayout()
+        self.layout().addLayout(tab_layout)
 
-    def build_ui(self):
-        # Master Layout
-        layout = QtWidgets.QGridLayout(self)
+        # Create tab widget
+        tab_widget = QtWidgets.QTabWidget()
+        tab_layout.addWidget(tab_widget)
 
-        # parameter widgets
-        self.frame_interval_text = QtWidgets.QLabel('Pose Interval')
-        layout.addWidget(self.frame_interval_text, 0, 0, 1, 1)
-        self.frame_interval_field = QtWidgets.QLineEdit('24')
-        layout.addWidget(self.frame_interval_field, 0, 1, 1, 2)
+        # Create layouts for each tab (can be automated to be added)
+        interface_tab_layout = QtWidgets.QVBoxLayout()
+        other_tab_layout = QtWidgets.QVBoxLayout()
 
-        self.frame_hold_text = QtWidgets.QLabel('Hold Pose Interval')
-        layout.addWidget(self.frame_hold_text, 1, 0, 1, 1)
-        self.frame_hold_field = QtWidgets.QLineEdit('12')
-        layout.addWidget(self.frame_hold_field, 1, 1, 1, 2)
+        # Create widgets for inside each tab, then set layouts from above
+        interface_tab = QtWidgets.QWidget()
+        tab_widget.addTab(interface_tab, 'interface')
+        interface_tab.setFixedHeight(300)
+        interface_tab.setFixedWidth(200)
+        interface_tab.setLayout(interface_tab_layout)
 
-        self.prefix_filter_text = QtWidgets.QLabel('Prefix Filters')
-        layout.addWidget(self.prefix_filter_text, 2, 0, 1, 1)
-        self.name_filter_field = QtWidgets.QLineEdit('lcr')
-        layout.addWidget(self.name_filter_field, 2, 1, 1, 2)
+        # Repeat
+        other_tab = QtWidgets.QWidget()
+        tab_widget.addTab(other_tab, 'other')
+        other_tab.setFixedHeight(300)
+        other_tab.setFixedWidth(200)
+        other_tab.setLayout(other_tab_layout)
 
-        run_command_button = QtWidgets.QPushButton('Playblast Face Shapes')
-        run_command_button.clicked.connect(self.run_playblast)
-        layout.addWidget(run_command_button, 3, 0, 1, 3)
+        # Creating widgets and items to go into each tab layout
+        button1 = QtWidgets.QPushButton('button 1')
+        button1.setFixedWidth(50)
+        button1.setFixedHeight(50)
+        interface_tab_layout.addWidget(button1)
 
-    def run_playblast(self):
-        # Check if command should run based on input values
-        input_status = self.check_input()
-        if not input_status:
-            return
+        # Repeat
+        button2 = QtWidgets.QPushButton('button 2')
+        button2.setFixedWidth(100)
+        button2.setFixedHeight(100)
+        other_tab_layout.addWidget(button2)
 
-        interval_input = int(self.frame_interval_field.text())
-        hold_input = int(self.frame_hold_field.text())
-        filter_input = self.name_filter_field.text()
-
-        # Running the script
-
-    def check_input(self):
-        # checking value type of interval field
-        try:
-            interval_input = int(self.frame_interval_field.text())
-        except Exception:
-            QtWidgets.QMessageBox.about(self, 'Error',
-                                        'Pose Interval: '
-                                        'Input can only be an integer')
-            return False
-
-        try:
-            hold_input = int(self.frame_hold_field.text())
-        except Exception:
-            QtWidgets.QMessageBox.about(self, 'Error',
-                                        'Hold Pose Interval: '
-                                        'Input can only be an integer')
-            return False
-
-        else:
-            return True
+        # parameter_widget = QtWidgets.QLabel('Test Layout')
+        # parameter_widget.setLayout(interface_tab)
 
 
 def show_ui():
