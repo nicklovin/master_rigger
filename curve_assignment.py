@@ -1,5 +1,6 @@
 import maya.cmds as cmds
 from functools import partial
+from PySide2 import QtWidgets, QtCore, QtGui
 
 
 def control_sphere(*arg):
@@ -314,3 +315,178 @@ def normalize_ctrl_scale(input_object=None):
                                 relative=True)
         cmds.xform(input_object, scale=[1, 1, 1])
         cmds.xform(input_object + '.cv[0:]', scale=ctrl_scale)
+
+
+class ControlCurveWidget(QtWidgets.QFrame):
+
+    offset_index_list = [
+        'ZERO',
+        'OFS',
+        'GRP',
+        'SRT',
+        'SDK',
+        'SPACE',
+        'DUMMY',
+        'EXPR',
+        'INFLU',
+        'NULL'
+    ]
+
+    def __init__(self):
+        QtWidgets.QFrame.__init__(self)
+
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(1, 1, 1, 1)
+        self.layout().setSpacing(0)
+        self.layout().setAlignment(QtCore.Qt.AlignTop)
+
+        control_crv_widget = QtWidgets.QWidget()
+        control_crv_widget.setLayout(QtWidgets.QVBoxLayout())
+        control_crv_widget.layout().setContentsMargins(2, 2, 2, 2)
+        control_crv_widget.layout().setSpacing(5)
+        control_crv_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                  QtWidgets.QSizePolicy.Fixed)
+        self.layout().addWidget(control_crv_widget)
+
+        name_layout = QtWidgets.QHBoxLayout()
+        shape_selection_layout = QtWidgets.QHBoxLayout()
+        offset_hierarchy_layout = QtWidgets.QHBoxLayout()
+        offset_button_layout = QtWidgets.QHBoxLayout()
+        hierarchy_condition_layout = QtWidgets.QHBoxLayout()
+        color_selection_layout = QtWidgets.QHBoxLayout()
+        button_layout = QtWidgets.QHBoxLayout()
+
+        control_crv_widget.layout().addLayout(name_layout)
+        control_crv_widget.layout().addLayout(shape_selection_layout)
+        control_crv_widget.layout().addLayout(offset_hierarchy_layout)
+        control_crv_widget.layout().addLayout(offset_button_layout)
+        control_crv_widget.layout().addLayout(hierarchy_condition_layout)
+        control_crv_widget.layout().addLayout(color_selection_layout)
+        control_crv_widget.layout().addLayout(button_layout)
+
+        control_name_label = QtWidgets.QLabel('Control Name:')
+        self.control_name_line_edit = QtWidgets.QLineEdit('')
+        self.control_name_line_edit.setPlaceholderText('L_wrist_CTRL')
+
+        reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_0-9]+')
+        text_validator = QtGui.QRegExpValidator(reg_ex,
+                                                self.control_name_line_edit)
+        self.control_name_line_edit.setValidator(text_validator)
+
+        name_layout.addWidget(control_name_label)
+        name_layout.addWidget(self.control_name_line_edit)
+
+        # Shape type selection
+        shape_type_label = QtWidgets.QLabel('Shape Type:')
+        self.shape_type_combo = QtWidgets.QComboBox()
+        for shape in sorted(curve_library.keys()):
+            self.shape_type_combo.addItem(shape)
+
+        shape_selection_layout.addWidget(shape_type_label)
+        shape_selection_layout.addWidget(self.shape_type_combo)
+
+        # Offset Hierarchy options
+        self.offset_frame = QtWidgets.QFrame()
+        self.offset_frame.setStyleSheet('background-color : rgb(27, 28, 30);')
+        offset_hierarchy_layout.layout().addWidget(self.offset_frame)
+        self.offset_frame.setLayout(QtWidgets.QVBoxLayout())
+
+        instruction_layout = QtWidgets.QHBoxLayout()
+        offset_frame_layout = QtWidgets.QHBoxLayout()
+
+        self.offset_frame.layout().addLayout(instruction_layout)
+        self.offset_frame.layout().addLayout(offset_frame_layout)
+
+        instructions = QtWidgets.QLabel(
+            'Offset Hierarchy created in order of shown input items.'
+        )
+        instruction_layout.addWidget(instructions)
+
+        offset_label = QtWidgets.QLabel('Hierarchy Parent:')
+        self.offset_index_combo = QtWidgets.QComboBox()
+        self.offset_index_combo.addItem('ZERO')
+        self.offset_index_combo.addItem('OFS')
+        # BELOW LINES are used for depicting line edit through dark QFrame
+        self.offset_index_combo.setStyleSheet(
+            'background-color : rgb(57, 58, 60);')
+
+        # BELOW LINE needs to be moved to a query/update function
+        # self.offset_index_list.append(self.offset_index_combo.currentText)
+
+        offset_frame_layout.addWidget(offset_label)
+        offset_frame_layout.addWidget(self.offset_index_combo)
+
+        offset_button_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
+        )
+        self.offset_index_button = QtWidgets.QPushButton('Add Preset Offset')
+        self.offset_custom_button = QtWidgets.QPushButton('Add Custom Offset')
+
+
+
+        # Checkbox Conditional
+        """
+        hierarchy_condition_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
+        )"""
+        self.use_hierarchy_checkbox = QtWidgets.QCheckBox('Use Hierarchy')
+        self.use_hierarchy_checkbox.setChecked(True)
+
+        offset_button_layout.addWidget(self.use_hierarchy_checkbox)
+        offset_button_layout.addWidget(self.offset_index_button)
+        offset_button_layout.addWidget(self.offset_custom_button)
+
+        # Color options
+        self.color_option_button = QtWidgets.QPushButton('<COLOR>')
+        self.set_color_button = QtWidgets.QPushButton('Assign Color')
+
+        color_selection_layout.addWidget(self.color_option_button)
+        color_selection_layout.addWidget(self.set_color_button)
+
+        # Control Shape creation options
+        self.create_control_button = QtWidgets.QPushButton('Create Control')
+        self.create_shape_button = QtWidgets.QPushButton('Shape On Selection')
+        self.build_hierarchy = QtWidgets.QPushButton('Offset Hierarchy')
+
+        button_layout.addWidget(self.create_control_button)
+        button_layout.addWidget(self.create_shape_button)
+        button_layout.addWidget(self.build_hierarchy)
+
+        self.offset_custom_button.clicked.connect(self.add_custom_offset)
+        self.offset_index_button.clicked.connect(self.add_preset_offset)
+
+        # ######### Start connecting the layout to functions ###########
+
+    def add_custom_offset(self):
+        new_custom_offset_layout = QtWidgets.QHBoxLayout()
+        self.offset_frame.layout().addLayout(new_custom_offset_layout)
+
+        self.new_offset_label = QtWidgets.QLabel('Sub-Parent Custom Offset:')
+        self.new_offset_line_edit = QtWidgets.QLineEdit('')
+        self.new_offset_line_edit.setStyleSheet(
+            'background-color : rgb(57, 58, 60);'
+        )
+
+        new_custom_offset_layout.addWidget(self.new_offset_label)
+        new_custom_offset_layout.addWidget(self.new_offset_line_edit)
+
+        # Need a callback method to query what value is at end in order
+
+    def add_preset_offset(self):
+        new_preset_offset_layout = QtWidgets.QHBoxLayout()
+        self.offset_frame.layout().addLayout(new_preset_offset_layout)
+
+        self.new_offset_label = QtWidgets.QLabel('Sub-Parent Preset Offset:')
+        self.new_offset_combo = QtWidgets.QComboBox()
+        for preset in self.offset_index_list:
+            self.new_offset_combo.addItem(preset)
+        self.new_offset_combo.setStyleSheet(
+            'background-color : rgb(57, 58, 60);'
+        )
+
+        new_preset_offset_layout.addWidget(self.new_offset_label)
+        new_preset_offset_layout.addWidget(self.new_offset_combo)
+
+        # Need a callback method to query what value is at end in order
