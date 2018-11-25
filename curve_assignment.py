@@ -1,6 +1,8 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from master_rigger import basicTools as tool  # If possible, remove this
+reload(tool)
 
 
 def control_sphere(*arg):
@@ -185,7 +187,12 @@ def set_control_color(rgb_input, input_object=None):
 
     """
     if not input_object:
-        input_object = cmds.ls(selection=True)[0]
+        try:
+            input_object = cmds.listRelatives(
+                cmds.ls(selection=True)[0], shapes=True)[0]
+        except TypeError:
+            return
+
     # setting the color value based on the passed argument
     if type(rgb_input) is list:
         if len(rgb_input) != 3:
@@ -260,17 +267,18 @@ def add_curve_shape(shape_choice, transform_node=None, color=None,
 
     # Curve color operations
     if color:
-        if color in rgb_dictionary:
+        if type(color) is list:
+            # Color is a list of 3 float values
+            set_control_color(rgb_input=color, input_object=curve_shape)
+        elif color in rgb_dictionary:
             # If an off-color variation is desired, change values to half
             if off_color:
                 curve_color = [float(c) / 1.5 for c in rgb_dictionary[color]]
                 # Color is a string name used as a key
             else:
                 curve_color = rgb_actuals[color]
-            set_control_color(rgb_input=curve_color)
-        elif type(color) is list:
-            # Color is a list of 3 float values
-            set_control_color(rgb_input=color)
+            set_control_color(rgb_input=curve_color, input_object=curve_shape)
+
         else:
             # Neither condition met, no action may be performed
             cmds.warning('Input for "color" parameter is not an acceptable '
@@ -332,6 +340,9 @@ class ControlCurveWidget(QtWidgets.QFrame):
         'NULL'
     ]
 
+    current_button_color = [255.0, 255.0, 0.0]
+    current_assign_color = [1.0, 1.0, 0.0]
+
     def __init__(self):
         QtWidgets.QFrame.__init__(self)
 
@@ -347,7 +358,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
         control_crv_widget.layout().setContentsMargins(2, 2, 2, 2)
         control_crv_widget.layout().setSpacing(5)
         control_crv_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                  QtWidgets.QSizePolicy.Fixed)
+                                         QtWidgets.QSizePolicy.Fixed)
         self.layout().addWidget(control_crv_widget)
 
         name_layout = QtWidgets.QHBoxLayout()
@@ -424,13 +435,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
         self.offset_index_button = QtWidgets.QPushButton('Add Preset Offset')
         self.offset_custom_button = QtWidgets.QPushButton('Add Custom Offset')
 
-
-
         # Checkbox Conditional
-        """
-        hierarchy_condition_layout.addSpacerItem(
-            QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
-        )"""
         self.use_hierarchy_checkbox = QtWidgets.QCheckBox('Use Hierarchy')
         self.use_hierarchy_checkbox.setChecked(True)
 
@@ -439,9 +444,23 @@ class ControlCurveWidget(QtWidgets.QFrame):
         offset_button_layout.addWidget(self.offset_custom_button)
 
         # Color options
-        self.color_option_button = QtWidgets.QPushButton('<COLOR>')
+        self.color_preset_combo = QtWidgets.QComboBox()
+        for color in sorted(rgb_dictionary.keys()):
+            if color == 'purple':
+                continue
+            self.color_preset_combo.addItem(color)
+        self.color_preset_combo.setCurrentIndex(9)
+        self.color_option_button = QtWidgets.QPushButton()
+        self.color_option_button.setMinimumWidth(150)
+        self.color_option_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                               QtWidgets.QSizePolicy.Expanding)
+        self.color_option_button.setStyleSheet(
+            'background-color: rgb%s' % str(tuple(self.current_button_color))
+        )
+
         self.set_color_button = QtWidgets.QPushButton('Assign Color')
 
+        color_selection_layout.addWidget(self.color_preset_combo)
         color_selection_layout.addWidget(self.color_option_button)
         color_selection_layout.addWidget(self.set_color_button)
 
@@ -457,7 +476,62 @@ class ControlCurveWidget(QtWidgets.QFrame):
         self.offset_custom_button.clicked.connect(self.add_custom_offset)
         self.offset_index_button.clicked.connect(self.add_preset_offset)
 
-        # ######### Start connecting the layout to functions ###########
+        # Connections to functions
+        self.color_option_button.clicked.connect(self.set_button_color)
+        self.color_preset_combo.currentIndexChanged.connect(
+            self.set_preset_color)
+        self.set_color_button.clicked.connect(self.set_control_color)
+
+        self.create_control_button.clicked.connect(
+            partial(self.create_control, False))
+        self.create_shape_button.clicked.connect(
+            partial(self.create_control, True))
+
+        # Connecting the Hierarchy offsets #####################################
+
+    def set_button_color(self):
+        cmds.colorEditor()
+        if cmds.colorEditor(query=True, result=True):
+            color = cmds.colorEditor(query=True, rgb=True)
+            color_normalized = [value * 255 for value in color]
+            if color_normalized != self.current_button_color:
+                self._force_button_update(color=color_normalized)
+
+            self.current_button_color = color_normalized
+            self.current_assign_color = color
+
+    def set_preset_color(self):
+        preset_color = self.color_preset_combo.currentText()
+        new_preset_color = \
+            [value * 255 for value in rgb_dictionary[preset_color]]
+        if new_preset_color != self.current_button_color:
+            self._force_button_update(color=new_preset_color)
+
+            self.current_button_color = new_preset_color
+            self.current_assign_color = rgb_dictionary[preset_color]
+
+    def set_control_color(self):
+        set_control_color(rgb_input=self.current_assign_color)
+
+    def _force_button_update(self, color):
+        self.color_option_button.setStyleSheet(
+            'background-color: rgb%s' % str(tuple(color))
+        )
+
+    def create_control(self, on_selected=False):
+        name = str(self.control_name_line_edit.text()).strip()
+        shape = self.shape_type_combo.currentText()
+        color = self.current_assign_color
+        if on_selected:
+            transform_node = cmds.ls(selection=True)[0]
+        else:
+            transform_node = cmds.group(empty=True, name=name)
+
+        add_curve_shape(
+            shape_choice=shape,
+            transform_node=transform_node,
+            color=color
+        )
 
     def add_custom_offset(self):
         new_custom_offset_layout = QtWidgets.QHBoxLayout()
