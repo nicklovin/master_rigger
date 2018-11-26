@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from master_rigger import Splitter
 from master_rigger import basicTools as tool  # If possible, remove this
 reload(tool)
 
@@ -333,12 +334,18 @@ class ControlCurveWidget(QtWidgets.QFrame):
         'GRP',
         'SRT',
         'SDK',
+        'CNS',
         'SPACE',
         'DUMMY',
         'EXPR',
         'INFLU',
         'NULL'
     ]
+
+    offset_hierarchy_inputs_list = []
+    offset_hierarchy_inputs_dict = {}
+
+    hierarchy_list = []
 
     current_button_color = [255.0, 255.0, 0.0]
     current_assign_color = [1.0, 1.0, 0.0]
@@ -368,13 +375,17 @@ class ControlCurveWidget(QtWidgets.QFrame):
         hierarchy_condition_layout = QtWidgets.QHBoxLayout()
         color_selection_layout = QtWidgets.QHBoxLayout()
         button_layout = QtWidgets.QHBoxLayout()
+        splitter_layout_1 = Splitter.SplitterLayout()
+        splitter_layout_2 = Splitter.SplitterLayout()
 
         control_crv_widget.layout().addLayout(name_layout)
         control_crv_widget.layout().addLayout(shape_selection_layout)
         control_crv_widget.layout().addLayout(offset_hierarchy_layout)
         control_crv_widget.layout().addLayout(offset_button_layout)
         control_crv_widget.layout().addLayout(hierarchy_condition_layout)
+        control_crv_widget.layout().addLayout(splitter_layout_1)
         control_crv_widget.layout().addLayout(color_selection_layout)
+        control_crv_widget.layout().addLayout(splitter_layout_2)
         control_crv_widget.layout().addLayout(button_layout)
 
         control_name_label = QtWidgets.QLabel('Control Name:')
@@ -422,9 +433,9 @@ class ControlCurveWidget(QtWidgets.QFrame):
         # BELOW LINES are used for depicting line edit through dark QFrame
         self.offset_index_combo.setStyleSheet(
             'background-color : rgb(57, 58, 60);')
-
-        # BELOW LINE needs to be moved to a query/update function
-        # self.offset_index_list.append(self.offset_index_combo.currentText)
+        # Condition setup to run hierarchy query
+        self.offset_hierarchy_inputs_list.append(self.offset_index_combo)
+        self.offset_hierarchy_inputs_dict[self.offset_index_combo] = 'preset'
 
         offset_frame_layout.addWidget(offset_label)
         offset_frame_layout.addWidget(self.offset_index_combo)
@@ -467,11 +478,11 @@ class ControlCurveWidget(QtWidgets.QFrame):
         # Control Shape creation options
         self.create_control_button = QtWidgets.QPushButton('Create Control')
         self.create_shape_button = QtWidgets.QPushButton('Shape On Selection')
-        self.build_hierarchy = QtWidgets.QPushButton('Offset Hierarchy')
+        self.build_hierarchy_button = QtWidgets.QPushButton('Create Hierarchy')
 
         button_layout.addWidget(self.create_control_button)
         button_layout.addWidget(self.create_shape_button)
-        button_layout.addWidget(self.build_hierarchy)
+        button_layout.addWidget(self.build_hierarchy_button)
 
         self.offset_custom_button.clicked.connect(self.add_custom_offset)
         self.offset_index_button.clicked.connect(self.add_preset_offset)
@@ -486,6 +497,8 @@ class ControlCurveWidget(QtWidgets.QFrame):
             partial(self.create_control, False))
         self.create_shape_button.clicked.connect(
             partial(self.create_control, True))
+        self.build_hierarchy_button.clicked.connect(
+            self.build_hierarchy_parameter)
 
         # Connecting the Hierarchy offsets #####################################
 
@@ -522,16 +535,30 @@ class ControlCurveWidget(QtWidgets.QFrame):
         name = str(self.control_name_line_edit.text()).strip()
         shape = self.shape_type_combo.currentText()
         color = self.current_assign_color
+
+        selected = cmds.ls(selection=True)[0]
+
         if on_selected:
             transform_node = cmds.ls(selection=True)[0]
+            add_curve_shape(
+                shape_choice=shape,
+                transform_node=transform_node,
+                color=color
+            )
+            return  # Don't build hierarchy if just adding shape
         else:
             transform_node = cmds.group(empty=True, name=name)
+            add_curve_shape(
+                shape_choice=shape,
+                transform_node=transform_node,
+                color=color
+            )
 
-        add_curve_shape(
-            shape_choice=shape,
-            transform_node=transform_node,
-            color=color
-        )
+        if selected:
+            tool.match_transformations(source=selected, target=transform_node)
+
+        if self.use_hierarchy_checkbox.isChecked():
+            self.build_hierarchy(control_object=transform_node)
 
     def add_custom_offset(self):
         new_custom_offset_layout = QtWidgets.QHBoxLayout()
@@ -542,6 +569,9 @@ class ControlCurveWidget(QtWidgets.QFrame):
         self.new_offset_line_edit.setStyleSheet(
             'background-color : rgb(57, 58, 60);'
         )
+
+        self.offset_hierarchy_inputs_list.append(self.new_offset_line_edit)
+        self.offset_hierarchy_inputs_dict[self.new_offset_line_edit] = 'custom'
 
         new_custom_offset_layout.addWidget(self.new_offset_label)
         new_custom_offset_layout.addWidget(self.new_offset_line_edit)
@@ -560,7 +590,27 @@ class ControlCurveWidget(QtWidgets.QFrame):
             'background-color : rgb(57, 58, 60);'
         )
 
+        self.offset_hierarchy_inputs_list.append(self.new_offset_combo)
+        self.offset_hierarchy_inputs_dict[self.new_offset_combo] = 'preset'
+
         new_preset_offset_layout.addWidget(self.new_offset_label)
         new_preset_offset_layout.addWidget(self.new_offset_combo)
 
-        # Need a callback method to query what value is at end in order
+    def build_hierarchy_parameter(self):
+        selected = cmds.ls(selection=True)
+        for control in selected:
+            self.build_hierarchy(control_object=control)
+
+    def build_hierarchy(self, control_object):
+        for item in self.offset_hierarchy_inputs_list:
+            if self.offset_hierarchy_inputs_dict[item] == 'preset':
+                offset_name = str(item.currentText()).strip()
+                self.hierarchy_list.append(offset_name)
+            elif self.offset_hierarchy_inputs_dict[item] == 'custom':
+                offset_name = str(item.text()).strip()
+                self.hierarchy_list.append(offset_name)
+            else:
+                continue
+
+        for offset in self.hierarchy_list:
+            tool.create_offset(suffix=offset, input_object=control_object)
