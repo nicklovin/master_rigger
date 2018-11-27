@@ -71,14 +71,38 @@ def list_renamer(new_name, index_type='number', start_number=1,
         else:
             index = 1
 
+        if name_list > 26:
+            pass
+
+            # index[27] == 'aa'
+        letter_index = None
+        overlap_count = 0
         for i in name_list:
-            if alpha_case == 'upper':
-                padded_index = LETTERS_INDEX[index]
-            elif alpha_case == 'lower':
-                padded_index = str(LETTERS_INDEX[index]).lower()
+            continuous_index = index % 27
+
+            if continuous_index < index:
+                overlap_count = overlap_count + 1
+                letter_index = LETTERS_INDEX[overlap_count]
+                index = 1
+            if letter_index:
+                if alpha_case == 'upper':
+                    padded_index = letter_index + LETTERS_INDEX[index]
+                elif alpha_case == 'lower':
+                    padded_index = letter_index.lower() \
+                                   + str(LETTERS_INDEX[index]).lower()
+                else:
+                    cmds.warning('Improper case provided! Use "upper" or '
+                                 '"lower".')
+                    return
             else:
-                cmds.warning('Improper case provided! Use "upper" or "lower".')
-                return
+                if alpha_case == 'upper':
+                    padded_index = LETTERS_INDEX[index]
+                elif alpha_case == 'lower':
+                    padded_index = str(LETTERS_INDEX[index]).lower()
+                else:
+                    cmds.warning('Improper case provided! Use "upper" or '
+                                 '"lower".')
+                    return
             cmds.rename(i, new_name.replace(pad_replace, padded_index))
             new_name_list.append(new_name.replace(pad_replace, padded_index))
             index = index + 1
@@ -128,9 +152,15 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
     else:
         name_list = list_input
 
+    print 'add=%s, replace=%s, remove=%s' % (add, replace, remove)
+
     if add:
         for i in name_list:
-            cmds.rename(i, '%s_%s' % (input_prefix, i))
+            if i[0] == '_':
+                new_i = cmds.rename(i, i[1:])
+                cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
+            else:
+                cmds.rename(i, '%s_%s' % (input_prefix, i))
 
     if replace:
         kill_length_list = []
@@ -140,19 +170,25 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
 
         number = 0
         for i in name_list:
-            cmds.rename(i, i.replace(i[0:kill_length_list[number]], input_prefix))
+            cmds.rename(i,
+                        i.replace(i[0:kill_length_list[number]], input_prefix))
             number = number + 1
 
-    if remove:  # Change replace functions with indexing [:] adjustments--------
+    if remove:
         kill_length_list = []
         for obj in name_list:
-            kill_length = obj.find('_')
-            kill_length_list.append(kill_length)
+            if '_' in obj:
+                kill_length = obj.find('_')
+                kill_length_list.append(kill_length)
 
         number = 0
         for i in name_list:
             if i[0] == '_':
                 cmds.rename(i, i[1:])
+            elif i[0] is int:
+                cmds.warning('Removing the prefix causes object to begin with '
+                             'illegal characters (integer). Object skipped for '
+                             'procedure.')
             else:
                 cmds.rename(i, i.replace(i[0:(kill_length_list[number] + 1)],
                                          ''))
@@ -195,19 +231,29 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
 
     if add:
         for i in name_list:
-            new_name = cmds.rename(i, '%s_%s' % (i, input_suffix))
+            if i[-1] == '_':
+                print i[-1]
+                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+            else:
+                new_name = cmds.rename(i, '%s_%s' % (i, input_suffix))
             name_return_list.append(new_name)
 
     if replace:
         kill_length_list = []
         for obj in name_list:
-            kill_length = obj.rfind('_')
-            kill_length_list.append(kill_length)
+            if '_' in obj:
+                kill_length = obj.rfind('_')
+                kill_length_list.append(kill_length)
 
         number = 0
         for i in name_list:
-            new_name = cmds.rename(i, i.replace(i[kill_length_list[number]:],
-                                                input_suffix))
+            if i[-1] == '_':
+                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+            else:
+                new_name = cmds.rename(i,
+                                       '%s_%s' % (i[:kill_length_list[number]],
+                                                  input_suffix))
+                print i[kill_length_list[number]:]
             name_return_list.append(new_name)
             number = number + 1
 
@@ -219,8 +265,9 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
 
         number = 0
         for i in name_list:
-            if i[kill_length_list[number]:] == '_':
-                cmds.rename(i, i[0:kill_length_list[number]])
+            if i[-1] == '_':
+                print i[-1]
+                cmds.rename(i, i[1:-1])
             else:
                 new_name = \
                     cmds.rename(i, i.replace(i[kill_length_list[number]:], ''))
@@ -414,7 +461,8 @@ class NamingWidget(QtWidgets.QFrame):
             QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
         )
         rename_starting_number_layout.addWidget(self.list_end_condition_label)
-        rename_starting_number_layout.addWidget(self.list_end_condition_checkbox)
+        rename_starting_number_layout.addWidget(
+            self.list_end_condition_checkbox)
 
         rename_widget.layout().addLayout(Splitter.SplitterLayout())
 
@@ -611,7 +659,7 @@ class NamingWidget(QtWidgets.QFrame):
         self.prefix_remove_button.clicked.connect(
             partial(self.edit_prefix, False, False, True))
         self.prefix_replace_button.clicked.connect(
-            partial(self.edit_prefix, False, True, False))
+            partial(self.edit_prefix, False, False, True))
 
         self.suffix_add_button.clicked.connect(
             partial(self.edit_suffix, True, False, False))
@@ -642,7 +690,7 @@ class NamingWidget(QtWidgets.QFrame):
         if naming_method is False:
             upper = self.upper_radio.isChecked()
 
-        return text, starting_number, naming_method, upper  # Use the parameters for the List rename tool
+        return text, starting_number, naming_method, upper
 
     def _update_example(self):
         example_text = ''
@@ -734,14 +782,15 @@ class NamingWidget(QtWidgets.QFrame):
             scope=select_scope
         )
 
-    def edit_prefix(self, add=False, remove=False, replace=False):
+    def edit_prefix(self, add=False, replace=False, remove=False):
 
         prefix = str(self.prefix_line_edit.text()).strip()
 
         set_prefix(input_prefix=prefix, add=add, remove=remove, replace=replace)
 
-    def edit_suffix(self, add=False, remove=False, replace=False):
+    def edit_suffix(self, add=False, replace=False, remove=False):
 
         suffix = str(self.suffix_line_edit.text()).strip()
+        print suffix
 
-        set_suffix(input_prefix=suffix, add=add, remove=remove, replace=replace)
+        set_suffix(input_suffix=suffix, add=add, remove=remove, replace=replace)
