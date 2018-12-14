@@ -1,5 +1,11 @@
 Notes for changes from uses of these tools in practical application and day-to-day use.
 -----------------------------------------------------
 
+RenamerLibrary:
+---------------
+- Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True))
 
-- renamerLibrary fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True))
+
+CurveAssignment:
+----------------
+- Assign color on the tooldock (and likely general calls) only assigns color to the first selected object.  Should take all selected.
