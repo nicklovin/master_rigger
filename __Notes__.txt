@@ -1,0 +1,5 @@
+Notes for changes from uses of these tools in practical application and day-to-day use.
+-----------------------------------------------------
+
+
+- renamerLibrary fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True))
