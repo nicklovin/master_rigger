@@ -14,3 +14,4 @@ CurveAssignment:
 AttributeManipulation:
 ----------------------
 - dock attr creator should have an option for keyable/non-keyable attributes (checkbox)
+- dock attr creator does not have a bool attribute option
