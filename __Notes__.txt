@@ -3,7 +3,8 @@ Notes for changes from uses of these tools in practical application and day-to-d
 
 RenamerLibrary:
 ---------------
-- Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True))
+- Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True)).
+- Regex for find/replace does not accept numbers, enough application suggests it should take them.
 
 
 CurveAssignment:
@@ -13,5 +14,5 @@ CurveAssignment:
 
 AttributeManipulation:
 ----------------------
-- dock attr creator should have an option for keyable/non-keyable attributes (checkbox)
-- dock attr creator does not have a bool attribute option
+- dock attr creator should have an option for keyable/non-keyable attributes (checkbox).
+- dock attr creator does not have a bool attribute option.
