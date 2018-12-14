@@ -9,3 +9,8 @@ RenamerLibrary:
 CurveAssignment:
 ----------------
 - Assign color on the tooldock (and likely general calls) only assigns color to the first selected object.  Should take all selected.
+
+
+AttributeManipulation:
+----------------------
+- dock attr creator should have an option for keyable/non-keyable attributes (checkbox)
