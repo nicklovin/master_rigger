@@ -10,6 +10,7 @@ RenamerLibrary:
 CurveAssignment:
 ----------------
 - Assign color on the tooldock (and likely general calls) only assigns color to the first selected object.  Should take all selected.
+- Despite previous debate, orange preset in dock is too far to a red-orange.  Refer to the old curve tool for orange values, but keep red-orange in library as its distinction is still appealing and stands out.
 
 
 AttributeManipulation:
