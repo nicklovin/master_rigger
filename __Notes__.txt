@@ -1,0 +1,23 @@
+Notes for changes from uses of these tools in practical application and day-to-day use.
+-----------------------------------------------------
+
+RenamerLibrary:
+---------------
+- Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True)).
+- Regex for find/replace does not accept numbers, enough application suggests it should take them.
+
+
+CurveAssignment:
+----------------
+- Assign color on the tooldock (and likely general calls) only assigns color to the first selected object.  Should take all selected.
+- Despite previous debate, orange preset in dock is too far to a red-orange.  Refer to the old curve tool for orange values, but keep red-orange in library as its distinction is still appealing and stands out.
+
+
+AttributeManipulation:
+----------------------
+- dock attr creator should have an option for keyable/non-keyable attributes (checkbox).
+- dock attr creator does not have a bool attribute option.
+
+NodeLibrary(?):
+---------------
+- Build some matrix setups?  Immediate helper would involve a matrix setup that can cleanly setup space switches (fuck constraints).
