@@ -14,6 +14,7 @@ hand_control = None
 
 
 def build_hand_module():
+    pass
 
 
 def build_finger_library(finger_count=4, thumb=True, segment_count=3,
