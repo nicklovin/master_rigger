@@ -190,7 +190,7 @@ def set_control_color(rgb_input, input_object=None):
     if not input_object:
         try:
             input_object = cmds.listRelatives(
-                cmds.ls(selection=True)[0], shapes=True)[0]
+                cmds.ls(selection=True, long=True), shapes=True)
         except TypeError:
             return
 
@@ -224,7 +224,7 @@ def set_control_color(rgb_input, input_object=None):
 
 
 def add_curve_shape(shape_choice, transform_node=None, color=None,
-                    off_color=False, shape_offset=[0, 0, 0]):
+                    off_color=False, shape_offset=(0, 0, 0)):
     """
     Creates a shape node that is input into a transform node.  This will turn a
     transform node into a control shape, allowing for more flexibility in

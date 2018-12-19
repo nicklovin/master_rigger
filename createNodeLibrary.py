@@ -6,16 +6,19 @@ node_dictionary = {
     'ADL': partial(cmds.shadingNode, 'addDoubleLinear', asUtility=True),
     'BLC': partial(cmds.shadingNode, 'blendColors', asUtility=True),
     'BTA': partial(cmds.shadingNode, 'blendTwoAttr', asUtility=True),
-    'clamp': partial(cmds.shadingNode, 'clamp', asUtility=True),
+    'CLMP': partial(cmds.shadingNode, 'clamp', asUtility=True),
     'CND': partial(cmds.shadingNode, 'condition', asUtility=True),
     'curveInfo': partial(cmds.shadingNode, 'curveInfo', asUtility=True),
     'DCPM': partial(cmds.shadingNode, 'decomposeMatrix', asUtility=True),
     'DIST': partial(cmds.shadingNode, 'distanceBetween', asUtility=True),
     'MDL': partial(cmds.shadingNode, 'multDoubleLinear', asUtility=True),
     'MDIV': partial(cmds.shadingNode, 'multiplyDivide', asUtility=True),
+    'MM': partial(cmds.shadingNode, 'multMatrix', asUtility=True),
     'PMA': partial(cmds.shadingNode, 'plusMinusAverage', asUtility=True),
     'REV': partial(cmds.shadingNode, 'reverse', asUtility=True),
+    'RMPV': partial(cmds.shadingNode, 'remapValue', asUtility=True),
     'SR': partial(cmds.shadingNode, 'setRange', asUtility=True),
+    'UC': partial(cmds.shadingNode, 'unitConversion', asUtility=True),
     'VECP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True)
 }
 
@@ -39,12 +42,18 @@ node_name_dictionary = {
     'MDL': 'MDL',
     'multiplyDivide': 'MDIV',
     'MDIV': 'MDIV',
+    'multMatrix': 'MM',
+    'MM': 'MM',
     'plusMinusAverage': 'PMA',
     'PMA': 'PMA',
     'reverse': 'REV',
     'REV': 'REV',
+    'remapValue': 'RMPV',
+    'RMPV': 'RMPV',
     'setRange': 'SR',
     'SR': 'SR',
+    'unitConversion': 'UC',
+    'UC': 'UC',
     'vectorProduct': 'VECP',
     'VECP': 'VECP'
 }
@@ -69,6 +78,10 @@ def create_node(node_key, name=None):
     node_name = cmds.rename(node,
                             '%s_%s' % (name, node_name_dictionary[node_key]))
     return node_name
+
+
+def matrix_constraint():
+    pass
 
 
 class NodeWidget(QtWidgets.QFrame):
