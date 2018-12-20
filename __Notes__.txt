@@ -3,6 +3,25 @@ Notes for changes from uses of these tools in practical application and day-to-d
 
 RenamerLibrary:
 ---------------
+- Still has issues with renaming on repeat objects, not causing long-name issues.  Do tests before finalizing anything else.
+- Suffix adding only affects first selection?
+
+CurveAssignment:
+----------------
+- Widget forces a selected = cmds.ls(sl=True)[0] when nothing might be selected.  Change to a try/except that leaves selected = None if it fails.
+- Widget does not create unique controller when Create Control is clicked, forces a selection
+
+AttributeManipulation:
+----------------------
+- min/max values should be open to accepting None values.  Skip incorrect conditions in function, accept noneTypes in class.
+
+
+
+NOTES ADDRESSED ON 12/18/2018:
+------------------------------
+
+RenamerLibrary:
+---------------
 - Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True)).
 - Regex for find/replace does not accept numbers, enough application suggests it should take them.
 - Suffix remove (and like prefix and other related bits) will repeat iterate when removing a suffix.  (ie. '*_CND_CND' becomes '*').  Try changing it to using .endswith('<input>') instead and see if that doesn't over iterate the issue.
