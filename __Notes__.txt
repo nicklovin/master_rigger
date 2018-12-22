@@ -10,6 +10,8 @@ CurveAssignment:
 ----------------
 - Widget forces a selected = cmds.ls(sl=True)[0] when nothing might be selected.  Change to a try/except that leaves selected = None if it fails.
 - Widget does not create unique controller when Create Control is clicked, forces a selection
+- Widget hierarchy list of offsets needs an 'X' button to remove unwanted parts.
+  - Also seems to be mostly broken, performing the operation 3 times? (might be related to number of hierarchy groups)
 
 AttributeManipulation:
 ----------------------
