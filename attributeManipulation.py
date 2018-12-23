@@ -14,25 +14,25 @@ def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
 
     Args:
         tx (int or bool): Assign status of attribute translateX,
-            0 or False perform action.
+            1 or True perform action.
         ty (int or bool): Assign status of attribute translateY,
-            0 or False perform action.
+            1 or True perform action.
         tz (int or bool): Assign status of attribute translateZ,
-            0 or False perform action.
+            1 or True perform action.
         rx (int or bool): Assign status of attribute rotateX,
-            0 or False perform action.
+            1 or True perform action.
         ry (int or bool): Assign status of attribute rotateY,
-            0 or False perform action.
+            1 or True perform action.
         rz (int or bool): Assign status of attribute rotateZ,
-            0 or False perform action.
+            1 or True perform action.
         sx (int or bool): Assign status of attribute scaleX,
-            0 or False perform action.
+            1 or True perform action.
         sy (int or bool): Assign status of attribute scaleY,
-            0 or False perform action.
+            1 or True perform action.
         sz (int or bool): Assign status of attribute scaleZ,
-            0 or False perform action.
+            1 or True perform action.
         v (int or bool): Assign status of attribute visibility,
-            0 or False perform action.
+            1 or True perform action.
         objects (list[str]): Assign object(s) to have attributes affected.
             Only works if selection=False.
         hide (bool): Assign if function should hide the locked attribute.
@@ -90,29 +90,39 @@ def create_attr(attribute_name, attribute_type, input_object=None,
     """
     # Checks to make sure an object is passed for the attribute
     if not input_object:
-        input_object = cmds.ls(selection=True)[0]
+        input_object = cmds.ls(selection=True, long=True)[0]
 
     if not input_object:
         cmds.warning('Could not find an object to add to!  Please select or '
                      'declare object to add attribute to.')
         return
 
+    if type(max_value) is str:
+        max_value = None
+    if type(min_value) is str:
+        min_value = None
+
     # Checks to see if the attribute already exists (might not be visible)
-    if not cmds.attributeQuery(attribute_name, node=input_object, exists=True):
-        if attribute_type == 'enum':
-            enum_list = ''
-            for enum in enum_names:
-                enum_list = enum_list + enum + ':'
-            cmds.addAttr(input_object,
-                         longName=attribute_name,
-                         attributeType=attribute_type,
-                         enumName=enum_list,
-                         defaultValue=default_value)
-        else:
-            cmds.addAttr(input_object,
-                         longName=attribute_name,
-                         attributeType=attribute_type,
-                         defaultValue=default_value)
+    if cmds.attributeQuery(attribute_name, node=input_object, exists=True):
+        cmds.warning(
+                'Attribute already exists on object:"{}".  If not found in the '
+                'channelbox, check the Channel Control.'.format(input_object))
+        return
+
+    if attribute_type == 'enum':
+        enum_list = ''
+        for enum in enum_names:
+            enum_list = enum_list + enum + ':'
+        cmds.addAttr(input_object,
+                     longName=attribute_name,
+                     attributeType=attribute_type,
+                     enumName=enum_list,
+                     defaultValue=default_value)
+    else:
+        cmds.addAttr(input_object,
+                     longName=attribute_name,
+                     attributeType=attribute_type,
+                     defaultValue=default_value)
     if keyable:
         cmds.setAttr('%s.%s' % (input_object, attribute_name),
                      edit=True,
@@ -130,11 +140,17 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                          edit=True,
                          max=max_value,
                          min=min_value)
+
     # If only one min/max argument is passed, return a warning
-        elif (max_value is None and min_value is not None) or \
-             (min_value is None and max_value is not None):
-            cmds.warning('Max and Min values will only be applied if both '
-                         'arguments have values.')
+        elif max_value is not None and min_value is None:
+            cmds.addAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         max=max_value)
+
+        elif max_value is None and min_value is not None:
+            cmds.addAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         min=min_value)
 
 
 class AttributeWidget(QtWidgets.QFrame):
@@ -230,10 +246,11 @@ class AddAttributesWidget(QtWidgets.QFrame):
     attribute_types_dict = {
         'Float': 'double',
         'Integer': 'long',
+        'Boolean': 'bool',
         'Enum': 'enum',
         'Spacer': 'enum'
     }
-    attribute_types_order = ['Float', 'Integer', 'Enum', 'Spacer']
+    attribute_types_order = ['Float', 'Integer', 'Boolean', 'Enum', 'Spacer']
 
     enum_index = 0
 
@@ -304,7 +321,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         self.default_value_line_edit.setAlignment(QtCore.Qt.AlignRight)
 
         # Integer Validator
-        reg_ex = QtCore.QRegExp('^(?!@$^_)[0-9_-]+')
+        reg_ex = QtCore.QRegExp(r'^(?!@$^_)[0-9\._-]+')
         text_validator = QtGui.QRegExpValidator(reg_ex,
                                                 self.min_value_line_edit)
         self.min_value_line_edit.setValidator(text_validator)
@@ -368,10 +385,15 @@ class AddAttributesWidget(QtWidgets.QFrame):
         ]
 
         input_object = cmds.ls(selection=True)
-
-        min_value = int(self.min_value_line_edit.text())
-        max_value = int(self.max_value_line_edit.text())
-        default_value = int(self.default_value_line_edit.text())
+        try:
+            min_value = float(self.min_value_line_edit.text())
+        except:
+            min_value = None
+        try:
+            max_value = float(self.max_value_line_edit.text())
+        except:
+            max_value = None
+        default_value = float(self.default_value_line_edit.text())
         keyable = True
         visible = True
 

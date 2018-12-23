@@ -8,8 +8,13 @@ LETTERS_INDEX = {index: letter for index, letter in
                  enumerate(ascii_uppercase, start=1)}
 
 
-def list_renamer(new_name, index_type='number', start_number=1,
-                 alpha_case='upper', end_name=False, selection=True,
+def split_long_names(longname):
+    short_name = longname.rsplit('|', 1)[-1]
+    return short_name
+
+
+def list_renamer(new_name, numeric_index=True, start_number=1,
+                 upper_case=True, end_name=False, selection=True,
                  list_input=[]):
     """
     Renamer tool for renaming lists of objects.  Default works based off
@@ -19,12 +24,12 @@ def list_renamer(new_name, index_type='number', start_number=1,
     Args:
         new_name (str): Name to assign to object list. Must include at least
             one '#'.
-        index_type (str): Assign numeric or alphanumeric values to the padding
-            of renamed objects in the list.
+        numeric_index (bool): Assign numeric values to the padding of renamed
+            objects in the list.  If false, uses alphanumeric.
         start_number (int): Assign starting index for the numeric renaming.  In
             alphanumeric, it will apply to the corresponding letter position.
             (ex. 2 = 'B')
-        alpha_case (str): Assign  alphabet identifier as uppercase or lowercase
+        upper_case (bool): Assign  alphabet identifier as uppercase or lowercase.
         end_name (bool): Assign if the last object in the list should have the
             numeric value replaced with 'END'.
         selection (bool): Assign if the input should query the selection or an
@@ -38,13 +43,14 @@ def list_renamer(new_name, index_type='number', start_number=1,
 
     """
     if selection:
-        name_list = cmds.ls(selection=True)
+        name_list = cmds.ls(selection=True, long=True)
     else:
         name_list = list_input
     index_start = max(0, start_number)
 
     if '#' not in new_name:
         cmds.warning('Could not find any "#" in name.')
+        return
 
     pad_replace = ''
     number_padding = new_name.count('#')
@@ -53,7 +59,7 @@ def list_renamer(new_name, index_type='number', start_number=1,
 
     new_name_list = []
     # Numeric renaming
-    if index_type == 'number':
+    if numeric_index:
         index = index_start
 
         for i in name_list:
@@ -63,7 +69,7 @@ def list_renamer(new_name, index_type='number', start_number=1,
             index = index + 1
 
     # Alphanumeric renaming
-    elif index_type == 'alpha' or index_type == 'letters':
+    else:
         # If index is not 0, the index will be changed to start letters at
         # appropriate alphanumeric count
         if index_start > 0:
@@ -78,6 +84,7 @@ def list_renamer(new_name, index_type='number', start_number=1,
         letter_index = None
         overlap_count = 0
         for i in name_list:
+            # Remainder division (not substitution)
             continuous_index = index % 27
 
             if continuous_index < index:
@@ -85,32 +92,21 @@ def list_renamer(new_name, index_type='number', start_number=1,
                 letter_index = LETTERS_INDEX[overlap_count]
                 index = 1
             if letter_index:
-                if alpha_case == 'upper':
+                if upper_case:
                     padded_index = letter_index + LETTERS_INDEX[index]
-                elif alpha_case == 'lower':
+                else:
                     padded_index = letter_index.lower() \
                                    + str(LETTERS_INDEX[index]).lower()
-                else:
-                    cmds.warning('Improper case provided! Use "upper" or '
-                                 '"lower".')
-                    return
+
             else:
-                if alpha_case == 'upper':
+                if upper_case:
                     padded_index = LETTERS_INDEX[index]
-                elif alpha_case == 'lower':
-                    padded_index = str(LETTERS_INDEX[index]).lower()
                 else:
-                    cmds.warning('Improper case provided! Use "upper" or '
-                                 '"lower".')
-                    return
+                    padded_index = str(LETTERS_INDEX[index]).lower()
+
             cmds.rename(i, new_name.replace(pad_replace, padded_index))
             new_name_list.append(new_name.replace(pad_replace, padded_index))
             index = index + 1
-
-    else:
-        cmds.warning('Invalid argument given for the index_type.  Use "number",'
-                     ' "alpha", or "letters"')
-        return
 
     # After indexes are all named, check if last object should be an 'end'
     if end_name:
@@ -120,23 +116,23 @@ def list_renamer(new_name, index_type='number', start_number=1,
     return new_name_list
 
 
-def set_prefix(input_prefix, add=False, replace=False, remove=False,
+def set_prefix(input_prefix, add=True, replace=False, remove=False,
                list_input=[]):
     """
     Prefix setting tool.  Allows for a prefix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
-    to be True, and leave the other two as False for the function to run.  
-    Default works based off selection, but can take a list parameter when 
+    to be True, and leave the other two as False for the function to run.
+    Default works based off selection, but can take a list parameter when
     function is passed with larger tools and functions.
-    
+
     Args:
         input_prefix (str): Assign the string value to add as a prefix.
-        Procedure Type Arguments: 
+        Procedure Type Arguments:
             add (bool): Assign the function to add a new prefix
-            replace (bool): Assign the function to replace an existing prefix 
+            replace (bool): Assign the function to replace an existing prefix
             remove (bool): Assign the function to remove an existing prefix.
-        list_input (list[str]): Allows for a provided list to be performed on.  
-            Only works if selection flag is False. 
+        list_input (list[str]): Allows for a provided list to be performed on.
+            Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
@@ -147,20 +143,24 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
         cmds.error('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
+
     if not list_input:
-        name_list = cmds.ls(selection=True)
+        name_list = cmds.ls(selection=True, long=True)
     else:
         name_list = list_input
 
-    print 'add=%s, replace=%s, remove=%s' % (add, replace, remove)
+    name_return_list = []
 
     if add:
         for i in name_list:
+            short_i = split_long_names(i)
             if i[0] == '_':
-                new_i = cmds.rename(i, i[1:])
-                cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
+                new_i = cmds.rename(i, short_i[1:])
+                new_name = cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
             else:
-                cmds.rename(i, '%s_%s' % (input_prefix, i))
+                new_name = cmds.rename(i, '%s_%s' % (input_prefix, short_i))
+            name_return_list.append(new_name)
+        return name_return_list
 
     if replace:
         kill_length_list = []
@@ -170,9 +170,11 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
 
         number = 0
         for i in name_list:
-            cmds.rename(i,
-                        i.replace(i[0:kill_length_list[number]], input_prefix))
+            new_name = cmds.rename(
+                i, i.replace(i[0:kill_length_list[number]], input_prefix))
             number = number + 1
+            name_return_list.append(new_name)
+        return name_return_list
 
     if remove:
         kill_length_list = []
@@ -184,34 +186,36 @@ def set_prefix(input_prefix, add=False, replace=False, remove=False,
         number = 0
         for i in name_list:
             if i[0] == '_':
-                cmds.rename(i, i[1:])
+                new_name = cmds.rename(i, i[1:])
             elif i[0] is int:
                 cmds.warning('Removing the prefix causes object to begin with '
                              'illegal characters (integer). Object skipped for '
                              'procedure.')
             else:
-                cmds.rename(i, i.replace(i[0:(kill_length_list[number] + 1)],
-                                         ''))
+                new_name = cmds.rename(
+                        i, i[0:(kill_length_list[number] + 1)])
             number = number + 1
+            name_return_list.append(new_name)
+        return name_return_list
 
 
-def set_suffix(input_suffix, add=False, replace=False, remove=False,
+def set_suffix(input_suffix, add=True, replace=False, remove=False,
                list_input=[]):
     """
     Prefix setting tool.  Allows for a suffix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
-    to be True, and leave the other two as False for the function to run.  
-    Default works based off selection, but can take a list parameter when 
+    to be True, and leave the other two as False for the function to run.
+    Default works based off selection, but can take a list parameter when
     function is passed with larger tools and functions.
 
     Args:
         input_suffix (str): Assign the string value to add as a suffix.
-        Procedure Type Arguments: 
+        Procedure Type Arguments:
             add (bool): Assign the function to add a new suffix
-            replace (bool): Assign the function to replace an existing suffix 
+            replace (bool): Assign the function to replace an existing suffix
             remove (bool): Assign the function to remove an existing suffix.
-        list_input (list[str]): Allows for a provided list to be performed on.  
-            Only works if selection flag is False. 
+        list_input (list[str]): Allows for a provided list to be performed on.
+            Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
@@ -222,8 +226,9 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
         cmds.error('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
+
     if not list_input:
-        name_list = cmds.ls(selection=True)
+        name_list = cmds.ls(selection=True, long=True)
     else:
         name_list = list_input
 
@@ -231,11 +236,11 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
 
     if add:
         for i in name_list:
+            short_i = split_long_names(i)
             if i[-1] == '_':
-                print i[-1]
-                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+                new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
             else:
-                new_name = cmds.rename(i, '%s_%s' % (i, input_suffix))
+                new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
             name_return_list.append(new_name)
 
     if replace:
@@ -266,18 +271,17 @@ def set_suffix(input_suffix, add=False, replace=False, remove=False,
         number = 0
         for i in name_list:
             if i[-1] == '_':
-                print i[-1]
                 cmds.rename(i, i[1:-1])
             else:
                 new_name = \
-                    cmds.rename(i, i.replace(i[kill_length_list[number]:], ''))
+                    cmds.rename(i, i[kill_length_list[number]:])
                 name_return_list.append(new_name)
             number = number + 1
 
     return name_return_list
 
 
-def search_replace_name(search_input, replace_output, scope='selection',
+def search_replace_name(search_input, replace_output, hierarchy=False,
                         input_object=[]):
     """
     Python equivalent of the mel searchReplaceNames procedure.  Created to work
@@ -286,67 +290,62 @@ def search_replace_name(search_input, replace_output, scope='selection',
     Args:
         search_input (str): String to search for that will be replaced.
         replace_output (str): String used to replace the input string.
-        scope (str): Declare the range/scope of the procedure.  Default is only
-            the 'selection', but can also take 'hierarchy'.
+        hierarchy (bool): Declare the range/scope of the procedure to use all
+            objects in hierarchy instead of just selection.
         input_object (list[str]): Allows funciton to work based on a provided
             list.  If nothing given, selection is assumed.
 
     """
     name_return_list = []
-    if scope == 'selection':
+
+    if not hierarchy:
         if input_object:
             selection = input_object
         else:
-            selection = cmds.ls(selection=True)
+            selection = cmds.ls(selection=True, long=True)
         for obj in selection:
             if search_input in obj:
-                new_name = cmds.rename(obj, obj.replace
+                new_name = cmds.rename(obj, split_long_names(obj).replace
                                        (search_input, replace_output))
                 name_return_list.append(new_name)
 
-    elif scope == 'hierarchy':
+    else:
         if input_object:
             hierarchy = cmds.listRelatives(input_object) \
-                        + cmds.ls(selection=True)
+                        + cmds.ls(selection=True, long=True)
         else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True), 
+            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True),
                                            allDescendents=True) \
-                        + cmds.ls(selection=True)
+                        + cmds.ls(selection=True, long=True)
         for obj in hierarchy:
             if search_input in obj:
                 new_name = cmds.rename(obj, obj.replace
                                        (search_input, replace_output))
                 name_return_list.append(new_name)
 
-    else:
-        cmds.error('Incorrect scope given!  Use "selection" or "hierarchy".')
-
     return name_return_list
 
 
 def clear_end_digits(input_object=[]):
     name_return_list = []
-    if input_object:
-        for obj in input_object:
-            num = None
-            try:
-                num = int(obj[-1])
-            except ValueError:
-                continue
 
-            new_name = cmds.rename(obj, obj[0:-1])
-            name_return_list.append(new_name)
-    else:
-        input_object = cmds.ls(selection=True)
-        for obj in input_object:
-            num = None
-            try:
-                num = int(obj[-1])
-            except ValueError:
-                continue
+    if not input_object:
+        input_object = cmds.ls(selection=True, long=True)
 
-            new_name = cmds.rename(obj, obj[0:-1])
-            name_return_list.append(new_name)
+    for obj in input_object:
+        try:
+            int(obj[-1])
+        except ValueError:
+            continue
+
+        if cmds.objExists(obj[0:-1]):
+            cmds.warning('While removing end digits, another object with name '
+                         '"{}" was found.  Function may have failed to remove '
+                         'end digits properly.'.format(obj[0:-1]))
+
+        new_name = cmds.rename(obj, obj[0:-1])
+        name_return_list.append(new_name)
+
     return name_return_list
 
 
@@ -392,7 +391,7 @@ class NamingWidget(QtWidgets.QFrame):
         # Regular Expression
         # () indicates excluding these symbols, [] indicates accepts these
         # Having a ^ between symbols indicates all symbols between are included
-        reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_#]+')
+        reg_ex = QtCore.QRegExp('^(?!@$^_)[0-9a-zA-Z_#]+')
         text_validator = QtGui.QRegExpValidator(reg_ex, self.rename_line_edit)
         self.rename_line_edit.setValidator(text_validator)
 
@@ -500,7 +499,7 @@ class NamingWidget(QtWidgets.QFrame):
         find_label.setFixedWidth(55)
         replace_label.setFixedWidth(55)
 
-        reg_ex = QtCore.QRegExp('[a-zA-Z_]+')
+        reg_ex = QtCore.QRegExp('[0-9a-zA-Z_]+')
         text_validator = QtGui.QRegExpValidator(reg_ex, self.rename_line_edit)
         self.find_line_edit.setValidator(text_validator)
         self.replace_line_edit.setValidator(text_validator)
@@ -551,7 +550,7 @@ class NamingWidget(QtWidgets.QFrame):
         replace_button_layout.setAlignment(QtCore.Qt.AlignRight)
         replace_button_layout.addWidget(replace_button)
         replace_widget.layout().addLayout(replace_button_layout)
-        
+
         # Prefix and Suffix
         additions_widget = QtWidgets.QWidget()
         additions_widget.setLayout(QtWidgets.QVBoxLayout())
@@ -574,13 +573,13 @@ class NamingWidget(QtWidgets.QFrame):
         suffix_layout.setContentsMargins(4, 0, 4, 0)
         suffix_layout.setSpacing(2)
         additions_widget.layout().addLayout(suffix_layout)
-        
+
         prefix_label = QtWidgets.QLabel('Prefix:')
         self.prefix_line_edit = QtWidgets.QLineEdit()
         self.prefix_add_button = QtWidgets.QPushButton('+')
         self.prefix_remove_button = QtWidgets.QPushButton('-')
         self.prefix_replace_button = QtWidgets.QPushButton('><')  # Change later
-        
+
         prefix_layout.addWidget(prefix_label)
         prefix_layout.addWidget(self.prefix_line_edit)
         prefix_layout.addWidget(self.prefix_add_button)
@@ -598,10 +597,10 @@ class NamingWidget(QtWidgets.QFrame):
         suffix_layout.addWidget(self.suffix_add_button)
         suffix_layout.addWidget(self.suffix_remove_button)
         suffix_layout.addWidget(self.suffix_replace_button)
-        
+
         prefix_label.setFixedWidth(55)
         suffix_label.setFixedWidth(55)
-        
+
         self.prefix_add_button.setFixedWidth(25)
         self.prefix_remove_button.setFixedWidth(25)
         self.prefix_replace_button.setFixedWidth(25)
@@ -748,22 +747,22 @@ class NamingWidget(QtWidgets.QFrame):
             self._get_rename_settings()
 
         if naming_method:
-            index_type = 'number'
+            index_type = True
         else:
-            index_type = 'alpha'
+            index_type = False
 
         if upper:
-            case = 'upper'
+            case = True
         else:
-            case = 'lower'
+            case = False
 
         ending = self.list_end_condition_checkbox.isChecked()
 
         list_renamer(
             new_name=text,
-            index_type=index_type,
+            numeric_index=index_type,
             start_number=starting_number,
-            alpha_case=case,
+            upper_case=case,
             end_name=ending
         )
 
@@ -772,14 +771,14 @@ class NamingWidget(QtWidgets.QFrame):
         replace_text = str(self.replace_line_edit.text()).strip()
 
         if self.selected_radio_button.isChecked():
-            select_scope = 'selection'
+            select_scope = False
         else:
-            select_scope = 'hierarchy'
+            select_scope = True
 
         search_replace_name(
             search_input=find_text,
             replace_output=replace_text,
-            scope=select_scope
+            hierarchy=select_scope
         )
 
     def edit_prefix(self, add=False, replace=False, remove=False):
