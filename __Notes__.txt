@@ -12,6 +12,10 @@ CurveAssignment:
 - Widget does not create unique controller when Create Control is clicked, forces a selection
 - Widget hierarchy list of offsets needs an 'X' button to remove unwanted parts.
   - Also seems to be mostly broken, performing the operation 3 times? (might be related to number of hierarchy groups)
+- Widget correctly snaps to selection, but does not iterate over full list if more than one object is selected.
+- Widget should have an overrideName checkbox as an option.
+- New Curve types:
+  - double/2-sided arrow
 
 AttributeManipulation:
 ----------------------
