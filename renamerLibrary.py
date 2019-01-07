@@ -250,6 +250,7 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
             short_i = get_short_name(i)
             if i[-1] == '_':
                 new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
+
             else:
                 new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
             # Test string to diagnose why function is not iterating properly:
@@ -404,6 +405,7 @@ class NamingWidget(QtWidgets.QFrame):
         # Regular Expression
         # () indicates excluding these symbols, [] indicates accepts these
         # Having a ^ between symbols indicates all symbols between are included
+
         reg_ex = QtCore.QRegExp('^(?!@$^_)[0-9a-zA-Z_#]+')
         text_validator = QtGui.QRegExpValidator(reg_ex, self.rename_line_edit)
         self.rename_line_edit.setValidator(text_validator)

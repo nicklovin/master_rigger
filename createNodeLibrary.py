@@ -185,6 +185,10 @@ def matrix_constraint(target=None, source=None, position=True, orientation=True,
     if scale:
         cmds.connectAttr(decompose_node + '.outputScale', target + '.s')
 
+        
+def matrix_constraint():
+    pass
+
 
 class NodeWidget(QtWidgets.QFrame):
 
