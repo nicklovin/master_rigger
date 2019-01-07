@@ -31,7 +31,7 @@ def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
 
     if 'ZERO' in input_object:
         suffix = 'OFS'
-    obj_short_name = lib.split_long_names(input_object)
+    obj_short_name = lib.get_short_name(input_object)
     offset_node = cmds.group(empty=True, name='%s_%s' % (obj_short_name, suffix))
 
     object_position = cmds.xform(input_object,

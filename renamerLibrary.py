@@ -8,9 +8,20 @@ LETTERS_INDEX = {index: letter for index, letter in
                  enumerate(ascii_uppercase, start=1)}
 
 
-def split_long_names(longname):
+def get_short_name(longname):
+    """
+    Returns the shortname of an input object.
+    """
     short_name = longname.rsplit('|', 1)[-1]
     return short_name
+
+
+def get_long_name(name):
+    """
+    Returns the longname of an object.
+    """
+    long_name = cmds.ls(name, long=True)[0]
+    return long_name
 
 
 def list_renamer(new_name, numeric_index=True, start_number=1,
@@ -153,7 +164,7 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
 
     if add:
         for i in name_list:
-            short_i = split_long_names(i)
+            short_i = get_short_name(i)
             if i[0] == '_':
                 new_i = cmds.rename(i, short_i[1:])
                 new_name = cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
@@ -236,11 +247,13 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
 
     if add:
         for i in name_list:
-            short_i = split_long_names(i)
+            short_i = get_short_name(i)
             if i[-1] == '_':
                 new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
             else:
                 new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
+            # Test string to diagnose why function is not iterating properly:
+            print '{} -> {}'.format(short_i, new_name)
             name_return_list.append(new_name)
 
     if replace:
@@ -305,7 +318,7 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
             selection = cmds.ls(selection=True, long=True)
         for obj in selection:
             if search_input in obj:
-                new_name = cmds.rename(obj, split_long_names(obj).replace
+                new_name = cmds.rename(obj, get_short_name(obj).replace
                                        (search_input, replace_output))
                 name_return_list.append(new_name)
 
@@ -314,7 +327,7 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
             hierarchy = cmds.listRelatives(input_object) \
                         + cmds.ls(selection=True, long=True)
         else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True),
+            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True)[0],
                                            allDescendents=True) \
                         + cmds.ls(selection=True, long=True)
         for obj in hierarchy:
