@@ -142,10 +142,15 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                          min=min_value)
 
     # If only one min/max argument is passed, return a warning
-        elif (max_value is None and min_value is not None) or \
-             (min_value is None and max_value is not None):
-            cmds.warning('Max and Min values will only be applied if both '
-                         'arguments have values.')
+        elif max_value is not None and min_value is None:
+            cmds.addAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         max=max_value)
+
+        elif max_value is None and min_value is not None:
+            cmds.addAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         min=min_value)
 
 
 class AttributeWidget(QtWidgets.QFrame):
@@ -316,7 +321,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         self.default_value_line_edit.setAlignment(QtCore.Qt.AlignRight)
 
         # Integer Validator
-        reg_ex = QtCore.QRegExp('^(?!@$^_)[0-9_-]+')
+        reg_ex = QtCore.QRegExp(r'^(?!@$^_)[0-9\._-]+')
         text_validator = QtGui.QRegExpValidator(reg_ex,
                                                 self.min_value_line_edit)
         self.min_value_line_edit.setValidator(text_validator)
@@ -380,10 +385,15 @@ class AddAttributesWidget(QtWidgets.QFrame):
         ]
 
         input_object = cmds.ls(selection=True)
-
-        min_value = int(self.min_value_line_edit.text())
-        max_value = int(self.max_value_line_edit.text())
-        default_value = int(self.default_value_line_edit.text())
+        try:
+            min_value = float(self.min_value_line_edit.text())
+        except:
+            min_value = None
+        try:
+            max_value = float(self.max_value_line_edit.text())
+        except:
+            max_value = None
+        default_value = float(self.default_value_line_edit.text())
         keyable = True
         visible = True
 

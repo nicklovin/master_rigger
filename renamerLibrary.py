@@ -8,6 +8,22 @@ LETTERS_INDEX = {index: letter for index, letter in
                  enumerate(ascii_uppercase, start=1)}
 
 
+def get_short_name(longname):
+    """
+    Returns the shortname of an input object.
+    """
+    short_name = longname.rsplit('|', 1)[-1]
+    return short_name
+
+
+def get_long_name(name):
+    """
+    Returns the longname of an object.
+    """
+    long_name = cmds.ls(name, long=True)[0]
+    return long_name
+
+
 def list_renamer(new_name, numeric_index=True, start_number=1,
                  upper_case=True, end_name=False, selection=True,
                  list_input=[]):
@@ -116,18 +132,18 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
     """
     Prefix setting tool.  Allows for a prefix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
-    to be True, and leave the other two as False for the function to run.  
-    Default works based off selection, but can take a list parameter when 
+    to be True, and leave the other two as False for the function to run.
+    Default works based off selection, but can take a list parameter when
     function is passed with larger tools and functions.
-    
+
     Args:
         input_prefix (str): Assign the string value to add as a prefix.
-        Procedure Type Arguments: 
+        Procedure Type Arguments:
             add (bool): Assign the function to add a new prefix
-            replace (bool): Assign the function to replace an existing prefix 
+            replace (bool): Assign the function to replace an existing prefix
             remove (bool): Assign the function to remove an existing prefix.
-        list_input (list[str]): Allows for a provided list to be performed on.  
-            Only works if selection flag is False. 
+        list_input (list[str]): Allows for a provided list to be performed on.
+            Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
@@ -148,11 +164,12 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
 
     if add:
         for i in name_list:
+            short_i = get_short_name(i)
             if i[0] == '_':
-                new_i = cmds.rename(i, i[1:])
+                new_i = cmds.rename(i, short_i[1:])
                 new_name = cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
             else:
-                new_name = cmds.rename(i, '%s_%s' % (input_prefix, i))
+                new_name = cmds.rename(i, '%s_%s' % (input_prefix, short_i))
             name_return_list.append(new_name)
         return name_return_list
 
@@ -165,7 +182,7 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
         number = 0
         for i in name_list:
             new_name = cmds.rename(
-                    i, i.replace(i[0:kill_length_list[number]], input_prefix))
+                i, i.replace(i[0:kill_length_list[number]], input_prefix))
             number = number + 1
             name_return_list.append(new_name)
         return name_return_list
@@ -198,18 +215,18 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
     """
     Prefix setting tool.  Allows for a suffix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
-    to be True, and leave the other two as False for the function to run.  
-    Default works based off selection, but can take a list parameter when 
+    to be True, and leave the other two as False for the function to run.
+    Default works based off selection, but can take a list parameter when
     function is passed with larger tools and functions.
 
     Args:
         input_suffix (str): Assign the string value to add as a suffix.
-        Procedure Type Arguments: 
+        Procedure Type Arguments:
             add (bool): Assign the function to add a new suffix
-            replace (bool): Assign the function to replace an existing suffix 
+            replace (bool): Assign the function to replace an existing suffix
             remove (bool): Assign the function to remove an existing suffix.
-        list_input (list[str]): Allows for a provided list to be performed on.  
-            Only works if selection flag is False. 
+        list_input (list[str]): Allows for a provided list to be performed on.
+            Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
@@ -230,10 +247,14 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
 
     if add:
         for i in name_list:
+            short_i = get_short_name(i)
             if i[-1] == '_':
-                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+                new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
+
             else:
-                new_name = cmds.rename(i, '%s_%s' % (i, input_suffix))
+                new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
+            # Test string to diagnose why function is not iterating properly:
+            print '{} -> {}'.format(short_i, new_name)
             name_return_list.append(new_name)
 
     if replace:
@@ -298,7 +319,7 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
             selection = cmds.ls(selection=True, long=True)
         for obj in selection:
             if search_input in obj:
-                new_name = cmds.rename(obj, obj.replace
+                new_name = cmds.rename(obj, get_short_name(obj).replace
                                        (search_input, replace_output))
                 name_return_list.append(new_name)
 
@@ -307,7 +328,7 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
             hierarchy = cmds.listRelatives(input_object) \
                         + cmds.ls(selection=True, long=True)
         else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True),
+            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True)[0],
                                            allDescendents=True) \
                         + cmds.ls(selection=True, long=True)
         for obj in hierarchy:
@@ -384,7 +405,8 @@ class NamingWidget(QtWidgets.QFrame):
         # Regular Expression
         # () indicates excluding these symbols, [] indicates accepts these
         # Having a ^ between symbols indicates all symbols between are included
-        reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_#_0-9]+')
+
+        reg_ex = QtCore.QRegExp('^(?!@$^_)[0-9a-zA-Z_#]+')
         text_validator = QtGui.QRegExpValidator(reg_ex, self.rename_line_edit)
         self.rename_line_edit.setValidator(text_validator)
 
@@ -492,7 +514,7 @@ class NamingWidget(QtWidgets.QFrame):
         find_label.setFixedWidth(55)
         replace_label.setFixedWidth(55)
 
-        reg_ex = QtCore.QRegExp('[a-zA-Z_]+')
+        reg_ex = QtCore.QRegExp('[0-9a-zA-Z_]+')
         text_validator = QtGui.QRegExpValidator(reg_ex, self.rename_line_edit)
         self.find_line_edit.setValidator(text_validator)
         self.replace_line_edit.setValidator(text_validator)
@@ -543,7 +565,7 @@ class NamingWidget(QtWidgets.QFrame):
         replace_button_layout.setAlignment(QtCore.Qt.AlignRight)
         replace_button_layout.addWidget(replace_button)
         replace_widget.layout().addLayout(replace_button_layout)
-        
+
         # Prefix and Suffix
         additions_widget = QtWidgets.QWidget()
         additions_widget.setLayout(QtWidgets.QVBoxLayout())
@@ -566,13 +588,13 @@ class NamingWidget(QtWidgets.QFrame):
         suffix_layout.setContentsMargins(4, 0, 4, 0)
         suffix_layout.setSpacing(2)
         additions_widget.layout().addLayout(suffix_layout)
-        
+
         prefix_label = QtWidgets.QLabel('Prefix:')
         self.prefix_line_edit = QtWidgets.QLineEdit()
         self.prefix_add_button = QtWidgets.QPushButton('+')
         self.prefix_remove_button = QtWidgets.QPushButton('-')
         self.prefix_replace_button = QtWidgets.QPushButton('><')  # Change later
-        
+
         prefix_layout.addWidget(prefix_label)
         prefix_layout.addWidget(self.prefix_line_edit)
         prefix_layout.addWidget(self.prefix_add_button)
@@ -590,10 +612,10 @@ class NamingWidget(QtWidgets.QFrame):
         suffix_layout.addWidget(self.suffix_add_button)
         suffix_layout.addWidget(self.suffix_remove_button)
         suffix_layout.addWidget(self.suffix_replace_button)
-        
+
         prefix_label.setFixedWidth(55)
         suffix_label.setFixedWidth(55)
-        
+
         self.prefix_add_button.setFixedWidth(25)
         self.prefix_remove_button.setFixedWidth(25)
         self.prefix_replace_button.setFixedWidth(25)

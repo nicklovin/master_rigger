@@ -1,6 +1,6 @@
 import maya.cmds as cmds
-from MasterRigger import basicTools as tool
-from MasterRigger import curve_assignment as crv
+from master_rigger import basicTools as tool
+from master_rigger import curve_assignment as crv
 
 
 def build_ribbon_plane(span_count, length_ratio=None, ribbon_name='C_ribbon'):

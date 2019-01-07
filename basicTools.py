@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+import renamerLibrary as lib
 
 
 def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
@@ -30,7 +31,8 @@ def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
 
     if 'ZERO' in input_object:
         suffix = 'OFS'
-    offset_node = cmds.group(empty=True, name='%s_%s' % (input_object, suffix))
+    obj_short_name = lib.get_short_name(input_object)
+    offset_node = cmds.group(empty=True, name='%s_%s' % (obj_short_name, suffix))
 
     object_position = cmds.xform(input_object,
                                  query=True,

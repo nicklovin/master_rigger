@@ -536,7 +536,10 @@ class ControlCurveWidget(QtWidgets.QFrame):
         shape = self.shape_type_combo.currentText()
         color = self.current_assign_color
 
-        selected = cmds.ls(selection=True)[0]
+        try:
+            selected = cmds.ls(selection=True)[0]
+        except:
+            selected = None
 
         if on_selected:
             transform_node = cmds.ls(selection=True)[0]
