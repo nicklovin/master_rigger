@@ -20,6 +20,7 @@ CurveAssignment:
 AttributeManipulation:
 ----------------------
 - min/max values should be open to accepting None values.  Skip incorrect conditions in function, accept noneTypes in class.
+- Warning about repeat attribute names is effective and gave good advice.  To improve, make a popup warning/error window class, then add a button that offers opening the channel control.
 
 CreateNodeLibrary:
 ------------------
@@ -31,7 +32,16 @@ UniqueTools:
   - Goal of this is to be able to evaluate what is changed by certain attributes
   - Work example: Switching between IKFK, and there's influence rotation when everything should be 0.  I want to see the values being affected without having to flip between the node editor or create keys just to live eval the numbers.
 - Create button that takes a selected attribute from the channelbox and instantly displays input/outputs of it in the node editor
-  
+
+Splitter:
+---------
+- The dock gui issue of crushing the widget/splitter texts is likely due to the Splitter class not having a fixed height equal to the height of the text.  On resizing, the splitter line remains in tact.
+
+Pop-up Class:
+-------------
+- Create a pop-up window for warnings and errors that most users would not notice otherwise
+- Can handle additional features such as a command-writable button that will run the suggested fix or work-around
+
 
 NOTES ADDRESSED ON 12/18/2018:
 ------------------------------
