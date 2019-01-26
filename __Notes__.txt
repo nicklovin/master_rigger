@@ -42,6 +42,10 @@ Pop-up Class:
 - Create a pop-up window for warnings and errors that most users would not notice otherwise
 - Can handle additional features such as a command-writable button that will run the suggested fix or work-around
 
+Others:
+-------
+- # Lost to browser crash
+
 
 NOTES ADDRESSED ON 12/18/2018:
 ------------------------------
