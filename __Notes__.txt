@@ -21,6 +21,7 @@ AttributeManipulation:
 ----------------------
 - min/max values should be open to accepting None values.  Skip incorrect conditions in function, accept noneTypes in class.
 - Warning about repeat attribute names is effective and gave good advice.  To improve, make a popup warning/error window class, then add a button that offers opening the channel control.
+- add keyable (attribute) checkbox to widget
 
 CreateNodeLibrary:
 ------------------
