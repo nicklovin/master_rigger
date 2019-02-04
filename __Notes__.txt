@@ -49,7 +49,10 @@ Pop-up Class:
 
 Others:
 -------
-- # Lost to browser crash
+- Create assorted os/sys related commands to improve file-based work.  (Likely don't use a translator file, good practice not to)
+- Create new translator file for general python utility extensions
+  - ex. random functions (random.randint()), math functions, re functions (regex), etc.
+- Long Term Goal: Create translator/wrapper file for Qt functions.  
 
 
 NOTES ADDRESSED ON 12/18/2018:
