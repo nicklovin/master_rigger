@@ -27,6 +27,11 @@ CreateNodeLibrary:
 ------------------
 - Add 'composeMatrix' to node options and widget
 
+BasicTools:
+-----------
+- Create offset tool that makes sense in the context of joint orientation (very specific usage)
+  - Would take in the direct orientation values AND the joint orient values and create an offset based exactly on direct orientation without calculating the joint orientation.  This is important for joints as the joints will maintain their joint orient values when placed in an offset group, this would help.
+
 UniqueTools:
 ------------
 - Create a gui/dock add-on that can display the live attributes of input/selected objects.
