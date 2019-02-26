@@ -1,6 +1,11 @@
 Notes for changes from uses of these tools in practical application and day-to-day use.
 -----------------------------------------------------
 
+LimbBuilderTool:
+----------------
+- Age old twist joint issue solved!: http://charactersetup.com/tutorial_rollJoints.html
+  - Update the auto-rig functions to work based on this technique, adding an MDIV to adjust twist sensitivity
+
 RenamerLibrary:
 ---------------
 - Still has issues with renaming on repeat objects, not causing long-name issues.  Do tests before finalizing anything else.
