@@ -1,0 +1,37 @@
+Notes for changes from uses of these tools in practical application and day-to-day use.
+-----------------------------------------------------
+
+RenamerLibrary:
+---------------
+- Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True)).
+- Regex for find/replace does not accept numbers, enough application suggests it should take them.
+- Suffix remove (and like prefix and other related bits) will repeat iterate when removing a suffix.  (ie. '*_CND_CND' becomes '*').  Try changing it to using .endswith('<input>') instead and see if that doesn't over iterate the issue.
+
+
+CurveAssignment:
+----------------
+- Assign color on the tooldock (and likely general calls) only assigns color to the first selected object.  Should take all selected.
+- Despite previous debate, orange preset in dock is too far to a red-orange.  Refer to the old curve tool for orange values, but keep red-orange in library as its distinction is still appealing and stands out.
+- Assign color on the tooldock (and likely general calls) fails if the shortname of a shape node is not unique in the scene.  Likely needs a similar fix as the renamerLibrary longname fixes.
+
+
+AttributeManipulation:
+----------------------
+- dock attr creator should have an option for keyable/non-keyable attributes (checkbox).
+- dock attr creator does not have a bool attribute option.
+- dock attr fails if nothing is put in the min/max boxes.  Reads as '' when it only takes int or None.  Needs fix in function and set the values in the Widget to "try" methods excepting ValueErrors.
+- dock attr creator should have a clear index options button for the enum setup.
+
+
+NodeLibrary(?):
+---------------
+- Build some matrix setups?  Immediate helper would involve a matrix setup that can cleanly setup space switches (fuck constraints).
+  - Account for controller scaling and double transforms when using world/local values mixed with positions to avoid double transforms
+    - Will require parent/world inverse matrices (similar to constraints without logic cycles)
+- Change node_dictionary clamp node input to 'CLMP', otherwise node_name_dictionary will give it the wrong argument.
+- Add multMatrix to library
+
+
+FingerRigTool:
+--------------
+- Some of the MDIV nodes in the finger offset only take one input, should be converted to MDL nodes.
