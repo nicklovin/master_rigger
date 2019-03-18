@@ -50,6 +50,8 @@ UniqueTools:
   - Stores expected selection (quicker flashing on/off without selection highlighting and re-selection)
   - Replaces add/removeISO buttons on shelf
   - Option to store multiple selection sets to flip between isolated selections (less need for numerous camera panels)
+- Isolate types:
+  - In previous tab menu, add checkboxes of commonly adjusted viewport view items (ex. Polygons, NURBS, IKhandles, etc.)
 
 Splitter:
 ---------
