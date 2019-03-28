@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+import renamerLibrary as lib
 
 
 def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
@@ -30,7 +31,8 @@ def create_offset(suffix='ZERO', input_object=None, invert_scale=None):
 
     if 'ZERO' in input_object:
         suffix = 'OFS'
-    offset_node = cmds.group(empty=True, name='%s_%s' % (input_object, suffix))
+    obj_short_name = lib.get_short_name(input_object)
+    offset_node = cmds.group(empty=True, name='%s_%s' % (obj_short_name, suffix))
 
     object_position = cmds.xform(input_object,
                                  query=True,
@@ -146,6 +148,22 @@ def match_transformations(translation=True, rotation=True, scale=False,
     if scale:
         scaling = cmds.xform(source, query=True, scale=True, relative=True)
         cmds.xform(target, scale=scaling, relative=True)
+
+
+def offset_joint_hierarchy(joints):
+    """
+    Offsets a hierarchy of joints with SRT groups, detaching the visible bones
+    """
+    # Add the new ensureArray function from the os wrapper when added to github
+    # Also consider option to just select hierarchy parent to run
+    parent_srt = None
+    for jnt in joints:
+        srt = create_offset(suffix='SRT', input_object=jnt)
+        if parent_srt:
+            # parent to the above srt offset then clean the hierarchy children order
+            cmds.parent(srt, parent_srt)
+            cmds.reorder(srt, front=True)
+        parent_srt = srt
 
 
 class OffsetNodeWidget(QtWidgets.QFrame):
