@@ -34,6 +34,9 @@ AttributeManipulation:
 CreateNodeLibrary:
 ------------------
 - Add 'composeMatrix' to node options and widget
+- Custom double to double3 node
+  - Converts single input to a triple output (parented under single attr) [pxrToFloat3 node as reference]
+  - Create script node, have backup that is just attrs added onto a unitConversion node (to avoid 'unknown' as type)
 
 BasicTools:
 -----------
