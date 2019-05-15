@@ -4,6 +4,22 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from master_rigger import cmdsTranslator as nUtils
 
+
+# Custom nodes
+def float_to_three():
+    ft3_node = cmds.shadingNode('unitConversion', asUtility=True)
+    cmds.addAttr(ft3_node, longName='customInput', attributeType='double')
+    cmds.addAttr(ft3_node, longName='customOutput', attributeType='double3')
+    cmds.addAttr(ft3_node, longName='outX', attributeType='double')
+    cmds.addAttr(ft3_node, longName='outY', attributeType='double')
+    cmds.addAttr(ft3_node, longName='outZ', attributeType='double')
+
+    cmds.connectAttr(ft3_node + '.customInput', ft3_node + '.outX', force=True)
+    cmds.connectAttr(ft3_node + '.customInput', ft3_node + '.outY', force=True)
+    cmds.connectAttr(ft3_node + '.customInput', ft3_node + '.outZ', force=True)
+    return ft3_node
+
+
 node_dictionary = {
     'ADL': partial(cmds.shadingNode, 'addDoubleLinear', asUtility=True),
     'BLC': partial(cmds.shadingNode, 'blendColors', asUtility=True),
@@ -13,6 +29,7 @@ node_dictionary = {
     'curveInfo': partial(cmds.shadingNode, 'curveInfo', asUtility=True),
     'DCPM': partial(cmds.shadingNode, 'decomposeMatrix', asUtility=True),
     'DIST': partial(cmds.shadingNode, 'distanceBetween', asUtility=True),
+    'FTT': float_to_three,
     'MDL': partial(cmds.shadingNode, 'multDoubleLinear', asUtility=True),
     'MDIV': partial(cmds.shadingNode, 'multiplyDivide', asUtility=True),
     'MM': partial(cmds.shadingNode, 'multMatrix', asUtility=True),
@@ -40,6 +57,9 @@ node_name_dictionary = {
     'DCPM': 'DCPM',
     'distanceBetween': 'DIST',
     'DIST': 'DIST',
+    'floatTo3': 'FTT',
+    'floatToThree': 'FTT',
+    'FTT': 'FTT',
     'multDoubleLinear': 'MDL',
     'MDL': 'MDL',
     'multiplyDivide': 'MDIV',
@@ -185,9 +205,30 @@ def matrix_constraint(target=None, source=None, position=True, orientation=True,
     if scale:
         cmds.connectAttr(decompose_node + '.outputScale', target + '.s')
 
-        
-def matrix_constraint():
-    pass
+
+def duplicate_node_connections(nodes=[], find='', replace=''):
+    if not nodes:
+        nodes = cmds.ls(selection=True)
+    cmds.select(clear=True)
+    newNodes = []
+
+    for node in nodes:
+        # Run by itself to create all nodes immediately
+        newNode = cmds.duplicate(node, name=node.replace(find, replace))
+        newNodes.append(newNode)
+
+    for node in nodes:
+        nodeConnections = [
+            con for con in cmds.listConnections(
+                node, connections=True, source=True, destination=False)
+            if '.' in con and not con.endswith('.message')
+        ]
+
+        for connection in nodeConnections:
+            sourceAttr = cmds.connectionInfo(connection, sourceFromDestination=True)
+            sourceAttr = sourceAttr.replace(find, replace)
+            targetAttr = connection.replace(find, replace)
+            cmds.connectAttr(sourceAttr, targetAttr, force=True)
 
 
 class NodeWidget(QtWidgets.QFrame):
@@ -213,10 +254,18 @@ class NodeWidget(QtWidgets.QFrame):
         name_layout = QtWidgets.QHBoxLayout()
         type_layout = QtWidgets.QHBoxLayout()
         button_layout = QtWidgets.QHBoxLayout()
+        # Add a small splitter
+        find_layout = QtWidgets.QHBoxLayout()
+        replace_layout = QtWidgets.QHBoxLayout()
+        dup_button_layout = QtWidgets.QHBoxLayout()
 
         node_widget.layout().addLayout(name_layout)
         node_widget.layout().addLayout(type_layout)
         node_widget.layout().addLayout(button_layout)
+        # add small splitter
+        node_widget.layout().addLayout(find_layout)
+        node_widget.layout().addLayout(replace_layout)
+        node_widget.layout().addLayout(dup_button_layout)
 
         node_label = QtWidgets.QLabel('Node Name:')
         self.input_node_name = QtWidgets.QLineEdit()
@@ -246,10 +295,32 @@ class NodeWidget(QtWidgets.QFrame):
         button_layout.addWidget(self.node_display_example)
         button_layout.addWidget(create_node_button)
 
+        # Duplicate Node Network widgets
+        find_label = QtWidgets.QLabel('Find:')
+        self.find_name = QtWidgets.QLineEdit()
+        self.find_name.setPlaceholderText('L_')  # Grey text
+
+        find_layout.addWidget(find_label)
+        find_layout.addWidget(self.find_name)
+
+        # Duplicate Node Network widgets
+        replace_label = QtWidgets.QLabel('Replace:')
+        self.replace_name = QtWidgets.QLineEdit()
+        self.replace_name.setPlaceholderText('R_')  # Grey text
+
+        replace_layout.addWidget(replace_label)
+        replace_layout.addWidget(self.replace_name)
+
+        duplicate_network_button = QtWidgets.QPushButton('Duplicate Node Network')
+        dup_button_layout.addWidget(duplicate_network_button)
+
+        # -------------------
+
         self.node_type_combo.currentIndexChanged.connect(self._update_node_name)
         self.input_node_name.textChanged.connect(self._update_node_name)
 
         create_node_button.clicked.connect(self._get_node_settings)
+        duplicate_network_button.clicked.connect(self._duplicate_node_network)
 
         self._update_node_name()
 
@@ -273,3 +344,9 @@ class NodeWidget(QtWidgets.QFrame):
 
         self.node_display_example.setText(
             '<font color=#646464>e.g. %s_%s</font>' % (input_text, node_text))
+
+    def _duplicate_node_network(self):
+        find_text = str(self.find_name.text()).strip()
+        replace_text = str(self.replace_name.text()).strip()
+
+        duplicate_node_connections(find=find_text, replace=replace_text)
