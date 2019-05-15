@@ -72,6 +72,9 @@ Others:
 - Create new translator file for general python utility extensions
   - ex. random functions (random.randint()), math functions, re functions (regex), etc.
 - Long Term Goal: Create translator/wrapper file for Qt functions.  
+- Create a bake transforms up function
+  - takes the transform values of a node and 0s them out, moving the values up to its parent
+  - good for late-term offsetting/changing values
 
 
 NOTES ADDRESSED ON 12/18/2018:
