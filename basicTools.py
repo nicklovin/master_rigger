@@ -150,6 +150,58 @@ def match_transformations(translation=True, rotation=True, scale=False,
         cmds.xform(target, scale=scaling, relative=True)
 
 
+def offset_joint_hierarchy(joints):
+    """
+    Offsets a hierarchy of joints with SRT groups, detaching the visible bones
+    """
+    # Add the new ensureArray function from the os wrapper when added to github
+    # Also consider option to just select hierarchy parent to run
+    parent_srt = None
+    for jnt in joints:
+        srt = create_offset(suffix='SRT', input_object=jnt)
+        if parent_srt:
+            # parent to the above srt offset then clean the hierarchy children order
+            cmds.parent(srt, parent_srt)
+            cmds.reorder(srt, front=True)
+        parent_srt = srt
+
+
+def bake_transforms_up(node=None):
+    if not node:
+        node = cmds.ls(selection=True)[0]
+
+    position = cmds.getAttr(node + '.t')[0]
+    rotation = cmds.getAttr(node + '.r')[0]
+    transformations = position + rotation
+
+    node_parent = cmds.listRelatives(parent=True)[0]
+    parent_position = cmds.getAttr(node_parent + '.t')[0]
+    parent_rotation = cmds.getAttr(node_parent + '.r')[0]
+    parent_transformations = parent_position + parent_rotation
+
+    new_transformations = [a + b for a, b in zip(transformations, parent_transformations)]
+
+    scale = cmds.getAttr(node + '.s')[0]
+    parent_scale = cmds.getAttr(node_parent + '.s')[0]
+    new_scale = [a * b for a, b in zip(scale, parent_scale)]
+
+    cmds.setAttr(node_parent + '.tx', new_transformations[0])
+    cmds.setAttr(node_parent + '.ty', new_transformations[1])
+    cmds.setAttr(node_parent + '.tz', new_transformations[2])
+    cmds.setAttr(node_parent + '.rx', new_transformations[3])
+    cmds.setAttr(node_parent + '.ry', new_transformations[4])
+    cmds.setAttr(node_parent + '.rz', new_transformations[5])
+    cmds.setAttr(node_parent + '.sx', new_scale[0])
+    cmds.setAttr(node_parent + '.sy', new_scale[1])
+    cmds.setAttr(node_parent + '.sz', new_scale[2])
+
+    for attr in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz']:
+        cmds.setAttr('%s.%s' % (node, attr), 0)
+
+    for attr in ['sx', 'sy', 'sz']:
+        cmds.setAttr('%s.%s' % (node, attr), 1)
+
+
 class OffsetNodeWidget(QtWidgets.QFrame):
 
     def __init__(self):
@@ -248,10 +300,13 @@ class TransformWidget(QtWidgets.QFrame):
         instruction_layout = QtWidgets.QHBoxLayout()
         button_layout_1 = QtWidgets.QHBoxLayout()
         button_layout_2 = QtWidgets.QHBoxLayout()
+        # Back transforms up
+        bake_button_layout = QtWidgets.QHBoxLayout()
 
         transform_widget.layout().addLayout(instruction_layout)
         transform_widget.layout().addLayout(button_layout_1)
         transform_widget.layout().addLayout(button_layout_2)
+        transform_widget.layout().addLayout(bake_button_layout)
 
         instructions = QtWidgets.QLabel(
             'Select the target object, then the source.'
@@ -274,6 +329,9 @@ class TransformWidget(QtWidgets.QFrame):
         button_layout_2.addWidget(rotation_button)
         button_layout_2.addWidget(scale_button)
 
+        bake_button = QtWidgets.QPushButton('Bake Transforms Up')
+        bake_button_layout.addWidget(bake_button)
+
         transform_button.clicked.connect(
             partial(match_transformations, True, True, True))
         translation_button.clicked.connect(
@@ -282,3 +340,5 @@ class TransformWidget(QtWidgets.QFrame):
             partial(match_transformations, False, True, False))
         scale_button.clicked.connect(
             partial(match_transformations, False, False, True))
+
+        bake_button.clicked.connect(bake_transforms_up)
