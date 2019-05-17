@@ -242,21 +242,19 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
         input_suffix = input_suffix[1:]
 
     if add:
-        for i in name_list:
-            short_i = get_short_name(i)
-            if i[-1] == '_':
-                new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
-
+        if input_suffix == '':
+            raise KeyError('No suffix given!')
+        for obj in name_list:
+            if obj.endswith('_'):
+                new_name = cmds.rename(obj, '%s%s' % (obj, input_suffix))
             else:
-                new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
-            # Test string to diagnose why function is not iterating properly:
-            print '{} -> {}'.format(short_i, new_name)
+                new_name = cmds.rename(obj, '%s_%s' % (obj, input_suffix))
             name_return_list.append(new_name)
         return name_return_list
 
     if replace:
         if input_suffix == '':
-            raise KeyError('No prefix given!')
+            raise KeyError('No suffix given!')
         for obj in name_list:
             if obj.endswith('_'):
                 new_name = cmds.rename(obj, obj + input_suffix)
@@ -279,7 +277,7 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
 
 
 def search_replace_name(search_input, replace_output, hierarchy=False,
-                        input_object=[]):
+                        input_objects=[]):
     """
     Python equivalent of the mel searchReplaceNames procedure.  Created to work
     with GUIs and python-written scripts.
@@ -289,58 +287,57 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
         replace_output (str): String used to replace the input string.
         hierarchy (bool): Declare the range/scope of the procedure to use all
             objects in hierarchy instead of just selection.
-        input_object (list[str]): Allows funciton to work based on a provided
+        input_objects (list[str]): Allows funciton to work based on a provided
             list.  If nothing given, selection is assumed.
 
     """
     name_return_list = []
 
+    if not input_objects:
+        input_objects = cmds.ls(selection=True)
+
     if not hierarchy:
-        if input_object:
-            selection = input_object
-        else:
-            selection = cmds.ls(selection=True)
-        for obj in selection:
+        for obj in input_objects:
             if search_input in obj:
-                new_name = cmds.rename(obj, get_short_name(obj).replace
-                                       (search_input, replace_output))
+                new_name = cmds.rename(obj, obj.replace(search_input, replace_output))
                 name_return_list.append(new_name)
 
     else:
-        if input_object:
-            hierarchy = cmds.listRelatives(input_object) \
+        if input_objects:
+            hierarchy = cmds.listRelatives(input_objects) \
                         + cmds.ls(selection=True)
         else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True)[0],
-                                           allDescendents=True) \
-                        + cmds.ls(selection=True)
+            hierarchy = []
+            for obj in cmds.ls(selection=True):
+                hierarchy += cmds.listRelatives(obj, allDescendents=True)
+                hierarchy.append(obj)
+
         for obj in hierarchy:
             if search_input in obj:
-                new_name = cmds.rename(obj, obj.replace
-                                       (search_input, replace_output))
+                new_name = cmds.rename(obj, obj.replace(search_input, replace_output))
                 name_return_list.append(new_name)
 
     return name_return_list
 
 
-def clear_end_digits(input_object=[]):
+def clear_end_digits(input_objects=[]):
     name_return_list = []
 
-    if not input_object:
-        input_object = cmds.ls(selection=True)
+    if not input_objects:
+        input_objects = cmds.ls(selection=True)
 
-    for obj in input_object:
+    for obj in input_objects:
         try:
             int(obj[-1])
         except ValueError:
             continue
 
-        if cmds.objExists(obj[0:-1]):
+        if cmds.objExists(obj[:-1]):
             cmds.warning('While removing end digits, another object with name '
                          '"{}" was found.  Function may have failed to remove '
                          'end digits properly.'.format(obj[0:-1]))
 
-        new_name = cmds.rename(obj, obj[0:-1])
+        new_name = cmds.rename(obj, obj[:-1])
         name_return_list.append(new_name)
 
     return name_return_list
