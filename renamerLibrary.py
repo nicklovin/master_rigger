@@ -25,8 +25,7 @@ def get_long_name(name):
 
 
 def list_renamer(new_name, numeric_index=True, start_number=1,
-                 upper_case=True, end_name=False, selection=True,
-                 list_input=[]):
+                 upper_case=True, end_name=False, name_list=[]):
     """
     Renamer tool for renaming lists of objects.  Default works based off
     selection, but can take a list parameter when function is passed with larger
@@ -43,9 +42,7 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
         upper_case (bool): Assign  alphabet identifier as uppercase or lowercase.
         end_name (bool): Assign if the last object in the list should have the
             numeric value replaced with 'END'.
-        selection (bool): Assign if the input should query the selection or an
-            input list.  Default is True.
-        list_input (list[str]): Assign the function to perform based on a list
+        name_list (list[str]): Assign the function to perform based on a list
             input not limited to selection.  Only active when selection argument
             is False.
 
@@ -53,10 +50,9 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
         (list): List of all the newly named nodes.
 
     """
-    if selection:
+    if not name_list:
         name_list = cmds.ls(selection=True)
-    else:
-        name_list = list_input
+
     index_start = max(0, start_number)
 
     if '#' not in new_name:
@@ -128,8 +124,8 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
     return new_name_list
 
 
-def set_prefix(input_prefix, add=True, replace=False, remove=False,
-               list_input=[]):
+def set_prefix(input_prefix='', add=False, replace=False, remove=False,
+               name_list=[]):
     """
     Prefix setting tool.  Allows for a prefix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
@@ -143,76 +139,75 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
             add (bool): Assign the function to add a new prefix
             replace (bool): Assign the function to replace an existing prefix
             remove (bool): Assign the function to remove an existing prefix.
-        list_input (list[str]): Allows for a provided list to be performed on.
+        name_list (list[str]): Allows for a provided list to be performed on.
             Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
-        cmds.error('Can only set one type flag at a time!  Use only one of'
+        raise KeyError('Can only set one type flag at a time!  Use only one of'
                    ' the following: add, replace, remove.')
 
     if not add and not replace and not remove:
-        cmds.error('No argument specified for the function to perform!  Set a '
+        raise KeyError('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
 
-    if not list_input:
-        name_list = cmds.ls(selection=True, long=True)
-    else:
-        name_list = list_input
+    if not name_list:
+        name_list = cmds.ls(selection=True)
 
     name_return_list = []
+    if input_prefix.endswith('_'):
+        input_prefix = input_prefix[:-1]
 
     if add:
+        if input_prefix == '':
+            raise KeyError('No prefix given!')
         for i in name_list:
             short_i = get_short_name(i)
-            if i[0] == '_':
-                new_i = cmds.rename(i, short_i[1:])
-                new_name = cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
+            if i.startswith('_'):
+                new_name = cmds.rename(i, '%s_%s' % (input_prefix, i[1:]))
             else:
                 new_name = cmds.rename(i, '%s_%s' % (input_prefix, short_i))
             name_return_list.append(new_name)
         return name_return_list
 
     if replace:
-        kill_length_list = []
+        if input_prefix == '':
+            raise KeyError('No prefix given!')
         for obj in name_list:
-            kill_length = obj.find('_')
-            kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            new_name = cmds.rename(
-                i, i.replace(i[0:kill_length_list[number]], input_prefix))
-            number = number + 1
-            name_return_list.append(new_name)
+            if obj.startswith('_'):
+                new_name = cmds.rename(obj, input_prefix + obj)
+            else:
+                name_parts = obj.split('_')
+                new_name = cmds.rename(obj, '_'.join([input_prefix] + name_parts[1:]))
+                name_return_list.append(new_name)
         return name_return_list
 
     if remove:
-        kill_length_list = []
         for obj in name_list:
-            if '_' in obj:
-                kill_length = obj.find('_')
-                kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[0] == '_':
-                new_name = cmds.rename(i, i[1:])
-            elif i[0] is int:
-                cmds.warning('Removing the prefix causes object to begin with '
-                             'illegal characters (integer). Object skipped for '
-                             'procedure.')
+            if obj.startswith('_'):
+                new_name = cmds.rename(obj, obj[1:])
+                name_return_list.append(new_name)
             else:
-                new_name = cmds.rename(
-                        i, i[0:(kill_length_list[number] + 1)])
-            number = number + 1
-            name_return_list.append(new_name)
+                name_parts = obj.split('_')
+                new_name = cmds.rename(obj, '_'.join(name_parts[1:]))
+                name_return_list.append(new_name)
         return name_return_list
+
+            # if '_' in obj:
+            #     kill_length = obj.find('_')
+                # kill_length_list.append(kill_length)
+        # number = 0
+        # for i in name_list:
+            # elif obj[0] is int:
+            #     cmds.warning('Removing the prefix causes object to begin with '
+            #                  'illegal characters (integer). Object skipped for '
+            #                  'procedure.')
+            # number = number + 1
 
 
 def set_suffix(input_suffix, add=True, replace=False, remove=False,
-               list_input=[]):
+               name_list=[]):
     """
     Prefix setting tool.  Allows for a suffix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
@@ -226,7 +221,7 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
             add (bool): Assign the function to add a new suffix
             replace (bool): Assign the function to replace an existing suffix
             remove (bool): Assign the function to remove an existing suffix.
-        list_input (list[str]): Allows for a provided list to be performed on.
+        name_list (list[str]): Allows for a provided list to be performed on.
             Only works if selection flag is False.
 
     """
@@ -239,12 +234,12 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
                    'value of True to one of the following: add, replace, '
                    'remove.')
 
-    if not list_input:
-        name_list = cmds.ls(selection=True, long=True)
-    else:
-        name_list = list_input
+    if not name_list:
+        name_list = cmds.ls(selection=True)
 
     name_return_list = []
+    if input_suffix.startswith('_'):
+        input_suffix = input_suffix[1:]
 
     if add:
         for i in name_list:
@@ -257,43 +252,30 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
             # Test string to diagnose why function is not iterating properly:
             print '{} -> {}'.format(short_i, new_name)
             name_return_list.append(new_name)
+        return name_return_list
 
     if replace:
-        kill_length_list = []
+        if input_suffix == '':
+            raise KeyError('No prefix given!')
         for obj in name_list:
-            if '_' in obj:
-                kill_length = obj.rfind('_')
-                kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[-1] == '_':
-                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+            if obj.endswith('_'):
+                new_name = cmds.rename(obj, obj + input_suffix)
             else:
-                new_name = cmds.rename(i,
-                                       '%s_%s' % (i[:kill_length_list[number]],
-                                                  input_suffix))
-                print i[kill_length_list[number]:]
-            name_return_list.append(new_name)
-            number = number + 1
+                name_parts = obj.split('_')
+                new_name = cmds.rename(obj, '_'.join(name_parts[:-1] + [input_suffix]))
+                name_return_list.append(new_name)
+        return name_return_list
 
     if remove:
-        kill_length_list = []
         for obj in name_list:
-            kill_length = obj.rfind('_')
-            kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[-1] == '_':
-                cmds.rename(i, i[1:-1])
-            else:
-                new_name = \
-                    cmds.rename(i, i[kill_length_list[number]:])
+            if obj.endswith('_'):
+                new_name = cmds.rename(obj, obj[:-1])
                 name_return_list.append(new_name)
-            number = number + 1
-
-    return name_return_list
+            else:
+                name_parts = obj.split('_')
+                new_name = cmds.rename(obj, '_'.join(name_parts[:-1]))
+                name_return_list.append(new_name)
+        return name_return_list
 
 
 def search_replace_name(search_input, replace_output, hierarchy=False,
@@ -317,7 +299,7 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
         if input_object:
             selection = input_object
         else:
-            selection = cmds.ls(selection=True, long=True)
+            selection = cmds.ls(selection=True)
         for obj in selection:
             if search_input in obj:
                 new_name = cmds.rename(obj, get_short_name(obj).replace
@@ -327,11 +309,11 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
     else:
         if input_object:
             hierarchy = cmds.listRelatives(input_object) \
-                        + cmds.ls(selection=True, long=True)
+                        + cmds.ls(selection=True)
         else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True)[0],
+            hierarchy = cmds.listRelatives(cmds.ls(selection=True)[0],
                                            allDescendents=True) \
-                        + cmds.ls(selection=True, long=True)
+                        + cmds.ls(selection=True)
         for obj in hierarchy:
             if search_input in obj:
                 new_name = cmds.rename(obj, obj.replace
@@ -345,7 +327,7 @@ def clear_end_digits(input_object=[]):
     name_return_list = []
 
     if not input_object:
-        input_object = cmds.ls(selection=True, long=True)
+        input_object = cmds.ls(selection=True)
 
     for obj in input_object:
         try:
