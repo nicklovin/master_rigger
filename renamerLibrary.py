@@ -54,33 +54,33 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
 
     """
     if selection:
-        name_list = cmds.ls(selection=True, long=True)
+        name_list = cmds.ls(selection=True)
     else:
         name_list = list_input
     index_start = max(0, start_number)
 
     if '#' not in new_name:
-        cmds.warning('Could not find any "#" in name.')
+        # Give this a proper error
+        cmds.error('Could not find any "#" in name.')
         return
 
-    pad_replace = ''
     number_padding = new_name.count('#')
-    for i in range(number_padding):
-        pad_replace = pad_replace + '#'
 
     new_name_list = []
     # Numeric renaming
     if numeric_index:
+        name_replace = new_name.replace(
+            ('#' * number_padding), '%0{pad}d'.format(pad=number_padding))
         index = index_start
 
         for i in name_list:
-            padded_index = str(index).zfill(number_padding)
-            cmds.rename(i, new_name.replace(pad_replace, padded_index))
-            new_name_list.append(new_name.replace(pad_replace, padded_index))
-            index = index + 1
+            numbered_name = cmds.rename(i, name_replace % index)
+            new_name_list.append(numbered_name)
+            index += 1
 
     # Alphanumeric renaming
     else:
+        name_replace = new_name.replace(('#' * number_padding), '%s')
         # If index is not 0, the index will be changed to start letters at
         # appropriate alphanumeric count
         if index_start > 0:
@@ -104,25 +104,26 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
                 index = 1
             if letter_index:
                 if upper_case:
-                    padded_index = letter_index + LETTERS_INDEX[index]
+                    alpha_index = letter_index + LETTERS_INDEX[index]
                 else:
-                    padded_index = letter_index.lower() \
+                    alpha_index = letter_index.lower() \
                                    + str(LETTERS_INDEX[index]).lower()
 
             else:
                 if upper_case:
-                    padded_index = LETTERS_INDEX[index]
+                    alpha_index = LETTERS_INDEX[index]
                 else:
-                    padded_index = str(LETTERS_INDEX[index]).lower()
+                    alpha_index = str(LETTERS_INDEX[index]).lower()
 
-            cmds.rename(i, new_name.replace(pad_replace, padded_index))
-            new_name_list.append(new_name.replace(pad_replace, padded_index))
-            index = index + 1
+            alpha_name = cmds.rename(i, name_replace % alpha_index)
+            new_name_list.append(alpha_name)
+            index += 1
 
     # After indexes are all named, check if last object should be an 'end'
     if end_name:
-        new_name_list[-1] = cmds.rename(new_name_list[-1],
-                                        new_name.replace(pad_replace, 'END'))
+        name_parts = new_name.split('#')
+        end_name = '{pre}END{post}'.format(pre=name_parts[0], post=name_parts[-1])
+        new_name_list[-1] = cmds.rename(new_name_list[-1], end_name)
 
     return new_name_list
 
