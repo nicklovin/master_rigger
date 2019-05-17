@@ -22,6 +22,8 @@ CurveAssignment:
 - Widget should have an overrideName checkbox as an option.
 - New Curve types:
   - double/2-sided arrow
+- add_curve_shape should be renamed and repurposed
+  - if no transform node is given, create one itself
 
 AttributeManipulation:
 ----------------------
