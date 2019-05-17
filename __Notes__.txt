@@ -75,6 +75,8 @@ Others:
 - Create a bake transforms up function
   - takes the transform values of a node and 0s them out, moving the values up to its parent
   - good for late-term offsetting/changing values
+- Have a function that can build custom buttons onto the dock per session
+  - Should also have option to export the button layout/commands to be reloaded if desired
 
 
 NOTES ADDRESSED ON 12/18/2018:
