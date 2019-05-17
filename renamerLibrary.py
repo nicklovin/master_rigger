@@ -653,7 +653,7 @@ class NamingWidget(QtWidgets.QFrame):
         self.prefix_remove_button.clicked.connect(
             partial(self.edit_prefix, False, False, True))
         self.prefix_replace_button.clicked.connect(
-            partial(self.edit_prefix, False, False, True))
+            partial(self.edit_prefix, False, True, False))
 
         self.suffix_add_button.clicked.connect(
             partial(self.edit_suffix, True, False, False))
