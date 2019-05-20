@@ -10,9 +10,9 @@ def float_to_three():
     ft3_node = cmds.shadingNode('unitConversion', asUtility=True)
     cmds.addAttr(ft3_node, longName='customInput', attributeType='double')
     cmds.addAttr(ft3_node, longName='customOutput', attributeType='double3')
-    cmds.addAttr(ft3_node, longName='outX', attributeType='double')
-    cmds.addAttr(ft3_node, longName='outY', attributeType='double')
-    cmds.addAttr(ft3_node, longName='outZ', attributeType='double')
+    cmds.addAttr(ft3_node, longName='outX', attributeType='double', parent='customOutput')
+    cmds.addAttr(ft3_node, longName='outY', attributeType='double', parent='customOutput')
+    cmds.addAttr(ft3_node, longName='outZ', attributeType='double', parent='customOutput')
 
     cmds.connectAttr(ft3_node + '.customInput', ft3_node + '.outX', force=True)
     cmds.connectAttr(ft3_node + '.customInput', ft3_node + '.outY', force=True)
@@ -27,6 +27,7 @@ node_dictionary = {
     'CLMP': partial(cmds.shadingNode, 'clamp', asUtility=True),
     'CND': partial(cmds.shadingNode, 'condition', asUtility=True),
     'curveInfo': partial(cmds.shadingNode, 'curveInfo', asUtility=True),
+    'CMPM': partial(cmds.shadingNode, 'composeMatrix', asUtility=True),
     'DCPM': partial(cmds.shadingNode, 'decomposeMatrix', asUtility=True),
     'DIST': partial(cmds.shadingNode, 'distanceBetween', asUtility=True),
     'FTT': float_to_three,
@@ -53,6 +54,8 @@ node_name_dictionary = {
     'condition': 'CND',
     'CND': 'CND',
     'curveInfo': 'curveInfo',
+    'composeMatrix': 'CMPM',
+    'CMPM': 'CMPM',
     'decomposeMatrix': 'DCPM',
     'DCPM': 'DCPM',
     'distanceBetween': 'DIST',
@@ -206,7 +209,7 @@ def matrix_constraint(target=None, source=None, position=True, orientation=True,
         cmds.connectAttr(decompose_node + '.outputScale', target + '.s')
 
 
-def duplicate_node_connections(nodes=[], find='', replace=''):
+def duplicate_node_connections(find, replace, nodes=[]):
     if not nodes:
         nodes = cmds.ls(selection=True)
     cmds.select(clear=True)
@@ -303,7 +306,7 @@ class NodeWidget(QtWidgets.QFrame):
         find_layout.addWidget(find_label)
         find_layout.addWidget(self.find_name)
 
-        # Duplicate Node Network widgets
+        # Duplicate Node Network widgets -----------
         replace_label = QtWidgets.QLabel('Replace:')
         self.replace_name = QtWidgets.QLineEdit()
         self.replace_name.setPlaceholderText('R_')  # Grey text
@@ -314,7 +317,7 @@ class NodeWidget(QtWidgets.QFrame):
         duplicate_network_button = QtWidgets.QPushButton('Duplicate Node Network')
         dup_button_layout.addWidget(duplicate_network_button)
 
-        # -------------------
+        # ------------------------------------------
 
         self.node_type_combo.currentIndexChanged.connect(self._update_node_name)
         self.input_node_name.textChanged.connect(self._update_node_name)
