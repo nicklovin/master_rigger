@@ -48,6 +48,7 @@ BasicTools:
 
 UniqueTools:
 ------------
+- Smart node duplicator that search + replaces all nodes in a hierarchy
 - Create a gui/dock add-on that can display the live attributes of input/selected objects.
   - Goal of this is to be able to evaluate what is changed by certain attributes
   - Work example: Switching between IKFK, and there's influence rotation when everything should be 0.  I want to see the values being affected without having to flip between the node editor or create keys just to live eval the numbers.
@@ -75,6 +76,7 @@ Basic Rig Setup:
 
 Others:
 -------
+- Build custom node to class assignment system (or adapt pymel)
 - Create assorted os/sys related commands to improve file-based work.  (Likely don't use a translator file, good practice not to)
 - Create new translator file for general python utility extensions
   - ex. random functions (random.randint()), math functions, re functions (regex), etc.
