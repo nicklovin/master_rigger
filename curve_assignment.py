@@ -161,7 +161,7 @@ rgb_dictionary = {
 rgb_actuals = {
     'red': [8.509607315063477, -0.010916219092905521, -0.010916219092905521],
     'pink': [8.509607315063477, 0.5029946565628052, 0.5029946565628052],
-    'orange': [(1.270400047302246, 0.33289995789527893, -0.010800041258335114)],
+    'orange': [1.270400047302246, 0.33289995789527893, -0.010800041258335114],
     'yellow': [8.509607315063477, 8.509607315063477, -0.010916219092905521],
     'green': [-0.010916219092905521, 8.509607315063477, -0.010916219092905521],
     'cyan': [0.14030349254608154, 1.1826233863830566, 8.509607315063477],
@@ -190,7 +190,8 @@ def set_control_color(rgb_input, input_object=None):
     if not input_object:
         try:
             obj = cmds.ls(selection=True)
-            if cmds.objectType(obj[0]) == 'shape':
+            print obj[0]
+            if cmds.objectType(obj[0]) == 'nurbsCurve':
                 input_object = obj
             else:
                 print 'using children'
@@ -212,6 +213,8 @@ def set_control_color(rgb_input, input_object=None):
         # This condition will only work when called directly, never when called
         # from the add_curve_shape function
         rgb = cmds.colorEditor(query=True, rgb=True)
+
+    print rgb
 
     if isinstance(input_object, list):
         for shape in input_object:
@@ -496,8 +499,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
         self.color_option_button.clicked.connect(self.set_button_color)
         self.color_preset_combo.currentIndexChanged.connect(
             self.set_preset_color)
-        self.set_color_button.clicked.connect(
-            partial(self.set_control_color, cmds.ls(selection=True)))
+        self.set_color_button.clicked.connect(self.set_control_color)
 
         self.create_control_button.clicked.connect(
             partial(self.create_control, False))
@@ -529,8 +531,8 @@ class ControlCurveWidget(QtWidgets.QFrame):
             self.current_button_color = new_preset_color
             self.current_assign_color = rgb_dictionary[preset_color]
 
-    def set_control_color(self, input_object=None):
-        set_control_color(rgb_input=self.current_assign_color, input_object=input_object)
+    def set_control_color(self):
+        set_control_color(rgb_input=self.current_assign_color)
 
     def _force_button_update(self, color):
         self.color_option_button.setStyleSheet(
@@ -623,3 +625,5 @@ class ControlCurveWidget(QtWidgets.QFrame):
 
         for offset in self.hierarchy_list:
             tool.create_offset(suffix=offset, input_object=control_object)
+
+        self.hierarchy_list = []
