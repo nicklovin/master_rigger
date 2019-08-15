@@ -1,6 +1,8 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+# import re
+import Splitter
 
 from master_rigger import cmdsTranslator as nUtils
 
@@ -22,37 +24,52 @@ def float_to_three():
 
 node_dictionary = {
     'ADL': partial(cmds.shadingNode, 'addDoubleLinear', asUtility=True),
+    'blendROT': partial(cmds.shadingNode, 'animBlendNodeAdditiveRotation', asUtility=True),
     'BLC': partial(cmds.shadingNode, 'blendColors', asUtility=True),
     'BTA': partial(cmds.shadingNode, 'blendTwoAttr', asUtility=True),
+    'CFME': partial(cmds.shadingNode, 'curveFromMeshEdge', asUtility=True),
     'CLMP': partial(cmds.shadingNode, 'clamp', asUtility=True),
-    'CND': partial(cmds.shadingNode, 'condition', asUtility=True),
-    'curveInfo': partial(cmds.shadingNode, 'curveInfo', asUtility=True),
     'CMPM': partial(cmds.shadingNode, 'composeMatrix', asUtility=True),
+    'CND': partial(cmds.shadingNode, 'condition', asUtility=True),
+    'CPOS': partial(cmds.shadingNode, 'closestPointOnSurface', asUtility=True),
+    'curveInfo': partial(cmds.shadingNode, 'curveInfo', asUtility=True),
     'DCPM': partial(cmds.shadingNode, 'decomposeMatrix', asUtility=True),
     'DIST': partial(cmds.shadingNode, 'distanceBetween', asUtility=True),
+    '4x4M': partial(cmds.shadingNode, 'fourByFourMatrix', asUtility=True),
     'FTT': float_to_three,
-    'MDL': partial(cmds.shadingNode, 'multDoubleLinear', asUtility=True),
+    'INVM': partial(cmds.shadingNode, 'inverseMatrix', asUtility=True),
+    'LOFT': partial(cmds.shadingNode, 'loft', asUtility=True),
     'MDIV': partial(cmds.shadingNode, 'multiplyDivide', asUtility=True),
+    'MDL': partial(cmds.shadingNode, 'multDoubleLinear', asUtility=True),
     'MM': partial(cmds.shadingNode, 'multMatrix', asUtility=True),
     'PMA': partial(cmds.shadingNode, 'plusMinusAverage', asUtility=True),
+    'PMM': partial(cmds.shadingNode, 'pointMatrixMult', asUtility=True),
+    'POCI': partial(cmds.shadingNode, 'pointOnCurveInfo', asUtility=True),
+    'POSI': partial(cmds.shadingNode, 'pointOnSurfaceInfo', asUtility=True),
     'REV': partial(cmds.shadingNode, 'reverse', asUtility=True),
     'RMPV': partial(cmds.shadingNode, 'remapValue', asUtility=True),
     'SR': partial(cmds.shadingNode, 'setRange', asUtility=True),
     'UC': partial(cmds.shadingNode, 'unitConversion', asUtility=True),
-    'VECP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True)
+    'VECP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True),
 }
 
 node_name_dictionary = {
     'addDoubleLinear': 'ADL',
     'ADL': 'ADL',
+    'animBlendNodeAdditiveRotation': 'blendROT',
+    'blendROT': 'blendROT',
     'blendColors': 'BLC',
     'BLC': 'BLC',
     'blendTwoAttr': 'BTA',
     'BTA': 'BTA',
     'clamp': 'CLMP',
     'CLMP': 'CLMP',
+    'closestPointOnSurface': 'CPOS',
+    'CPOS': 'CPOS',
     'condition': 'CND',
     'CND': 'CND',
+    'curveFromMeshEdge': 'CFME',
+    'CFME': 'CFME',
     'curveInfo': 'curveInfo',
     'composeMatrix': 'CMPM',
     'CMPM': 'CMPM',
@@ -60,9 +77,15 @@ node_name_dictionary = {
     'DCPM': 'DCPM',
     'distanceBetween': 'DIST',
     'DIST': 'DIST',
+    'fourByFourMatrix': '4x4M',
+    'FBFM': '4x4M',
+    '4x4M': '4x4M',
     'floatTo3': 'FTT',
-    'floatToThree': 'FTT',
     'FTT': 'FTT',
+    'inverseMatrix': 'INVM',
+    'INVM': 'INVM',
+    'loft': 'LOFT',
+    'LOFT': 'LOFT',
     'multDoubleLinear': 'MDL',
     'MDL': 'MDL',
     'multiplyDivide': 'MDIV',
@@ -71,6 +94,12 @@ node_name_dictionary = {
     'MM': 'MM',
     'plusMinusAverage': 'PMA',
     'PMA': 'PMA',
+    'pointMatrixMult': 'PMM',
+    'PMM': 'PMM',
+    'pointOnCurveInfo': 'POCI',
+    'POCI': 'POCI',
+    'pointOnSurfaceInfo': 'POSI',
+    'POSI': 'POSI',
     'reverse': 'REV',
     'REV': 'REV',
     'remapValue': 'RMPV',
@@ -80,7 +109,7 @@ node_name_dictionary = {
     'unitConversion': 'UC',
     'UC': 'UC',
     'vectorProduct': 'VECP',
-    'VECP': 'VECP'
+    'VECP': 'VECP',
 }
 
 
@@ -99,114 +128,13 @@ def create_node(node_key, name=None):
     """
     if not name:
         name = cmds.ls(selection=True)[0]
-    node = node_dictionary[node_name_dictionary[node_key]]()
+    try:
+        node = node_dictionary[node_name_dictionary[node_key]]()
+    except:  # check exception type
+        raise Exception('Node type ({}) not yet implemented!'.format(node_key))
     node_name = cmds.rename(node,
                             '%s_%s' % (name, node_name_dictionary[node_key]))
     return node_name
-
-
-# Matrix stuff needs major field testing.  Try out at work
-def simple_matrix_constraint(target=None, source=None, position=True,
-                             orientation=True, scale=False,
-                             maintain_offset=True):
-
-    if not target:
-        try:
-            target = nUtils.get_selection_list()[0]
-        except Exception as err:
-            raise err
-
-    if not source:
-        try:
-            source = nUtils.get_selection_list()[1]
-        except Exception as err:
-            raise err
-
-    decompose_node = create_node(node_key='DCPM',
-                                 name='{}_matrixSRT'.format(target))
-
-    if maintain_offset:
-        cmds.connectAttr(source + '.matrix', decompose_node)
-    else:
-        cmds.connectAttr(source + '.worldMatrix[0]', decompose_node)
-
-    if position:
-        cmds.connectAttr(decompose_node + '.outputTranslate', target + '.t')
-    if orientation:
-        cmds.connectAttr(decompose_node + '.outputRotate', target + '.r')
-    if scale:
-        cmds.connectAttr(decompose_node + '.outputScale', target + '.s')
-
-
-def matrix_constraint(target=None, source=None, position=True, orientation=True,
-                      scale=False):
-
-    # Order of matrix operation conditions:
-    # - check values of the source object
-    # - understand the position hierarchy of the source
-    # - find the parent matrix of the source within its correct hierarchy
-    #   * if the local matrix == worldMatrix, use world inverse and skip hierarchy sorting
-    # - create a multMatrix based on the inverse parent and local matrix of the source
-    # - decompose the multMatrix to send values to the target
-
-    if not target:
-        try:
-            target = nUtils.get_selection_list()[0]
-        except Exception as err:
-            raise err
-
-    if not source:
-        try:
-            source = nUtils.get_selection_list()[1]
-        except Exception as err:
-            raise err
-
-    local_matrix = nUtils.get_matrix(source)
-    world_matrix = nUtils.get_world_matrix(source)
-
-    # if the local == world, hierarchy is irrelevant
-    if local_matrix == world_matrix:
-        simple_matrix_constraint(target=target, source=source, position=position,
-                                 orientation=orientation, scale=scale)
-        return
-
-    null_matrix = [1, 0, 0, 0,
-                   0, 1, 0, 0,
-                   0, 0, 1, 0,
-                   0, 0, 0, 1]
-
-    source_parent = nUtils.get_parent(source)
-    parent_matrix = nUtils.get_matrix(source_parent)
-
-    # check if this properly rounds to 0 for insignificant values
-    # Loops through parents until one with an offset value is found
-    while null_matrix == parent_matrix:
-        new_parent = nUtils.get_parent(source_parent)
-        parent_matrix = nUtils.get_matrix(new_parent)
-        source_parent = new_parent
-        # on final loop, source_parent will be the correct transform
-
-    parent_world_inverse_matrix = '{}.worldInverseMatrix'.format(source_parent)
-    world_matrix = '{}.worldMatrix'.format(source)
-
-    mult_matrix_node = create_node(node_key='MM',
-                                   name='{}_matrixSRT'.format(target))
-
-    decompose_node = create_node(node_key='DCPM',
-                                 name='{}_matrixSRT'.format(target))
-
-    cmds.connectAttr(world_matrix, mult_matrix_node + '.inputMatrix[0]')
-    cmds.connectAttr(parent_world_inverse_matrix,
-                     mult_matrix_node + '.inputMatrix[1]')
-    cmds.connectAttr(mult_matrix_node + '.outputMatrix',
-                     decompose_node + '.inputMatrix')
-
-    if position:
-        cmds.connectAttr(decompose_node + '.outputTranslate', target + '.t')
-    if orientation:
-        cmds.connectAttr(decompose_node + '.outputRotate', target + '.r')
-    if scale:
-        cmds.connectAttr(decompose_node + '.outputScale', target + '.s')
 
 
 def duplicate_node_connections(find, replace, nodes=[]):
@@ -216,22 +144,46 @@ def duplicate_node_connections(find, replace, nodes=[]):
     newNodes = []
 
     for node in nodes:
-        # Run by itself to create all nodes immediately
-        newNode = cmds.duplicate(node, name=node.replace(find, replace))
+        new_node_name = node.replace(find, replace)
+        newNode = cmds.duplicate(node, name=new_node_name)
         newNodes.append(newNode)
 
     for node in nodes:
-        nodeConnections = [
+        # Input Connections
+        nodeInConnections = [
             con for con in cmds.listConnections(
-                node, connections=True, source=True, destination=False)
+                node, connections=True, source=True, destination=False, skipConversionNodes=True)
             if '.' in con and not con.endswith('.message')
         ]
 
-        for connection in nodeConnections:
+        for connection in nodeInConnections:
             sourceAttr = cmds.connectionInfo(connection, sourceFromDestination=True)
+            if cmds.objectType(sourceAttr.split('.')[0]) == 'unitConversion':
+                unitConversionInOut = sourceAttr.replace('output', 'input')
+                sourceAttr = cmds.connectionInfo(unitConversionInOut, sourceFromDestination=True)
             sourceAttr = sourceAttr.replace(find, replace)
             targetAttr = connection.replace(find, replace)
             cmds.connectAttr(sourceAttr, targetAttr, force=True)
+
+        # Output Connections
+        nodeOutConnections = [
+            con for con in cmds.listConnections(
+                node, connections=True, source=False, destination=True, skipConversionNodes=True)
+            if '.' in con and not con.endswith('.message')
+        ]
+        for connection in nodeOutConnections:
+            targetAttrs = cmds.connectionInfo(connection, destinationFromSource=True)
+            sourceAttr = connection.replace(find, replace)
+            for targetAttr in targetAttrs:
+                if cmds.objectType(targetAttr.split('.')[0]) == 'unitConversion':
+                    unitConversionInOut = targetAttr.replace('input', 'output')
+                    targetAttr = cmds.connectionInfo(unitConversionInOut, destinationFromSource=True)
+                    for con in targetAttr:
+                        con = con.replace(find, replace)
+                        cmds.connectAttr(sourceAttr, con, force=True)
+                else:
+                    targetAttr = targetAttr.replace(find, replace)
+                    cmds.connectAttr(sourceAttr, targetAttr, force=True)
 
 
 class NodeWidget(QtWidgets.QFrame):
@@ -266,6 +218,7 @@ class NodeWidget(QtWidgets.QFrame):
         node_widget.layout().addLayout(type_layout)
         node_widget.layout().addLayout(button_layout)
         # add small splitter
+        node_widget.layout().addLayout(Splitter.SplitterLayout())
         node_widget.layout().addLayout(find_layout)
         node_widget.layout().addLayout(replace_layout)
         node_widget.layout().addLayout(dup_button_layout)
