@@ -1,5 +1,7 @@
 import maya.cmds as cmds
+from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from master_rigger import Splitter
 # Force commit comment.
 
 attributes = ['.tx', '.ty', '.tz',
@@ -8,6 +10,7 @@ attributes = ['.tx', '.ty', '.tz',
               '.v']
 
 
+# TODO: Kwargs?
 def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
               *args):
     """
@@ -65,6 +68,8 @@ def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
                 cmds.setAttr(obj + attr, lock=True, keyable=attr_keyable)
 
 
+# TODO: Kwargs: min_value, max_value, default_value, keyable, channelbox, enum_names
+# channelbox = kwargs.get('channelbox', True)
 def create_attr(attribute_name, attribute_type, input_object=None,
                 min_value=None, max_value=None, default_value=0, keyable=True,
                 channelbox=True, enum_names=[]):
@@ -93,9 +98,8 @@ def create_attr(attribute_name, attribute_type, input_object=None,
         input_object = cmds.ls(selection=True, long=True)[0]
 
     if not input_object:
-        cmds.warning('Could not find an object to add to!  Please select or '
-                     'declare object to add attribute to.')
-        return
+        raise Exception(
+            'No node given! Select or declare object to add attribute to.')
 
     if type(max_value) is str:
         max_value = None
@@ -118,20 +122,50 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                      attributeType=attribute_type,
                      enumName=enum_list,
                      defaultValue=default_value)
+    # Do euler conditions better...
+    elif attribute_type == 'euler':
+        cmds.addAttr(
+            input_object,
+            longName=attribute_name,
+            attributeType='compound',
+            numberOfChildren=3)
+        cmds.addAttr(
+            input_object,
+            longName=attribute_name + 'X',
+            attributeType='doubleAngle',
+            parent='newRotation')
+        cmds.addAttr(
+            input_object,
+            longName=attribute_name + 'Y',
+            attributeType='doubleAngle',
+            parent='newRotation')
+        cmds.addAttr(
+            input_object,
+            longName=attribute_name + 'Z',
+            attributeType='doubleAngle',
+            parent='newRotation')
+
+        for axis in ['X', 'Y', 'Z']:
+            cmds.setAttr('%s.%s%s' % (input_object, attribute_name, axis),
+                         edit=True,
+                         keyable=keyable,
+                         channelBox=channelbox)
+
     else:
         cmds.addAttr(input_object,
                      longName=attribute_name,
                      attributeType=attribute_type,
                      defaultValue=default_value)
-    if keyable:
-        cmds.setAttr('%s.%s' % (input_object, attribute_name),
-                     edit=True,
-                     keyable=keyable)
-    else:
-        cmds.setAttr('%s.%s' % (input_object, attribute_name),
-                     edit=True,
-                     keyable=keyable,
-                     channelBox=channelbox)
+    if attribute_type != 'euler':
+        if keyable:
+            cmds.setAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         keyable=keyable)
+        else:
+            cmds.setAttr('%s.%s' % (input_object, attribute_name),
+                         edit=True,
+                         keyable=keyable,
+                         channelBox=channelbox)
 
     # If value is a number, check for min/max values
     if 'float' or 'double' or 'int' or 'long' in attribute_type:
@@ -244,17 +278,33 @@ class AttributeWidget(QtWidgets.QFrame):
 class AddAttributesWidget(QtWidgets.QFrame):
 
     attribute_types_dict = {
-        'Float': 'double',
-        'Integer': 'long',
+        'Angle': 'doubleAngle',
         'Boolean': 'bool',
         'Enum': 'enum',
+        'EulerXYZ': 'euler',
+        'Float': 'double',
+        'FloatXYZ': 'float3',
+        'Integer': 'long',
+        'Matrix': 'fltMatrix',
         'Spacer': 'enum'
     }
-    attribute_types_order = ['Float', 'Integer', 'Boolean', 'Enum', 'Spacer']
+
+    attribute_types_order = [
+        'Float',
+        'Integer',
+        'Angle',
+        'FloatXYZ',
+        'EulerXYZ',
+        'Boolean',
+        'Enum',
+        'Matrix',
+        'Spacer'
+    ]
 
     enum_index = 0
 
     enum_index_list = []
+    enum_index_layouts = {}
 
     def __init__(self):
         QtWidgets.QFrame.__init__(self)
@@ -279,6 +329,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         attribute_enum_layout = QtWidgets.QHBoxLayout()
         attribute_enum_button_layout = QtWidgets.QHBoxLayout()
         attribute_button_layout_3 = QtWidgets.QHBoxLayout()
+        attr_reorder_layout = QtWidgets.QHBoxLayout()
 
         add_attribute_widget.layout().addLayout(attribute_name_layout)
         add_attribute_widget.layout().addLayout(attribute_type_layout)
@@ -286,6 +337,8 @@ class AddAttributesWidget(QtWidgets.QFrame):
         add_attribute_widget.layout().addLayout(attribute_enum_layout)
         add_attribute_widget.layout().addLayout(attribute_enum_button_layout)
         add_attribute_widget.layout().addLayout(attribute_button_layout_3)
+        add_attribute_widget.layout().addLayout(Splitter.SplitterLayout())
+        add_attribute_widget.layout().addLayout(attr_reorder_layout)
 
         create_attr_label = QtWidgets.QLabel('Attribute Name:')
         self.create_attr_line_edit = QtWidgets.QLineEdit('')
@@ -297,13 +350,17 @@ class AddAttributesWidget(QtWidgets.QFrame):
         self.attr_type_combo = QtWidgets.QComboBox()
         for type in self.attribute_types_order:
             self.attr_type_combo.addItem(type)
-        self.attr_type_combo.setFixedWidth(150)
+        self.attr_type_combo.setFixedWidth(100)
+
+        self.attr_keyable_check = QtWidgets.QCheckBox('Keyable')
+        self.attr_keyable_check.setChecked(True)
 
         attribute_type_layout.addWidget(attr_type_label)
         attribute_type_layout.addSpacerItem(
             QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
         )
         attribute_type_layout.addWidget(self.attr_type_combo)
+        attribute_type_layout.addWidget(self.attr_keyable_check)
 
         min_value_label = QtWidgets.QLabel('Min Value:')
         self.min_value_line_edit = QtWidgets.QLineEdit('')
@@ -359,11 +416,21 @@ class AddAttributesWidget(QtWidgets.QFrame):
         attribute_enum_button_layout.addSpacerItem(
             QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
         )
+        self.enum_clear_index_button = QtWidgets.QPushButton('Clear Enum Indices')
         self.enum_index_button = QtWidgets.QPushButton('Add Enum Index')
 
+        attribute_enum_button_layout.addWidget(self.enum_clear_index_button)
         attribute_enum_button_layout.addWidget(self.enum_index_button)
         self.enum_frame.setVisible(False)
+        self.enum_clear_index_button.setVisible(False)
         self.enum_index_button.setVisible(False)
+
+        # Reorder Attributes ---------------------------------------------------
+
+        # For now, use the pre-loaded tool.  Later implement full tool into dock
+
+        attr_reorder_launch_button = QtWidgets.QPushButton('Launch Reorder Attributes')
+        attr_reorder_layout.addWidget(attr_reorder_launch_button)
 
         # ----------------------------------------------------------------------
 
@@ -373,9 +440,12 @@ class AddAttributesWidget(QtWidgets.QFrame):
         self.create_attr_button = QtWidgets.QPushButton('Create Attribute')
         attribute_button_layout_3.addWidget(self.create_attr_button)
 
+        self.enum_clear_index_button.clicked.connect(self.clear_enum_indices)
         self.enum_index_button.clicked.connect(self.add_enum_index)
         self.create_attr_button.clicked.connect(self._create_attr_parameters)
         self.attr_type_combo.currentIndexChanged.connect(self._adjust_layout_vis)
+
+        attr_reorder_launch_button.clicked.connect(self.launch_reorder_attributes)
 
     def _create_attr_parameters(self):
         attribute_name = str(self.create_attr_line_edit.text()).strip()
@@ -394,7 +464,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         except:
             max_value = None
         default_value = float(self.default_value_line_edit.text())
-        keyable = True
+        keyable = self.attr_keyable_check.isChecked()
         visible = True
 
         enum_names = []
@@ -420,6 +490,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
 
     def add_enum_index(self):
         self.enum_index += 1
+        current_index = self.enum_index
 
         new_enum_index_layout = QtWidgets.QHBoxLayout()
         self.enum_frame.layout().addLayout(new_enum_index_layout)
@@ -430,15 +501,37 @@ class AddAttributesWidget(QtWidgets.QFrame):
         self.new_enum_line_edit.setStyleSheet(
             'background-color : rgb(57, 58, 60);'
         )
+        self.new_enum_x_button = QtWidgets.QPushButton('X')
+        self.new_enum_x_button.setFixedHeight(20)
+        self.new_enum_x_button.setFixedWidth(20)
+        self.new_enum_x_button.setStyleSheet(
+            'border-radius: 10px;  background-color : rgb(87, 88, 90); font-weight: bold;'
+        )
 
         new_enum_index_layout.addWidget(self.new_enum_label)
         new_enum_index_layout.addWidget(self.new_enum_line_edit)
+        new_enum_index_layout.addWidget(self.new_enum_x_button)
 
         self.enum_index_list.append(self.new_enum_line_edit)
+        # self.enum_index_layouts[self.enum_index] =
+        self.new_enum_x_button.clicked.connect(
+            partial(self.remove_enum_index, new_enum_index_layout, current_index))
+
+    def remove_enum_index(self, layout, index):
+        self.clear_layout(layout)
+        self.enum_index_list.pop(index)
+        # self.enum_index -= 1
+
+    def clear_enum_indices(self):
+        if self.enum_index_layouts:
+            for layout in self.enum_index_layouts.values():
+                self.clear_layout(layout)
+        self.enum_index = 0
 
     def _adjust_layout_vis(self):
         if self.attr_type_combo.currentText() == 'Enum':
             self.enum_frame.setVisible(True)
+            self.enum_clear_index_button.setVisible(True)
             self.enum_index_button.setVisible(True)
             self.min_value_line_edit.setEnabled(False)
             self.max_value_line_edit.setEnabled(False)
@@ -454,3 +547,27 @@ class AddAttributesWidget(QtWidgets.QFrame):
             self.enum_index_button.setVisible(False)
             self.min_value_line_edit.setEnabled(True)
             self.max_value_line_edit.setEnabled(True)
+
+    # Pyside Utility
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clear_layout(item.layout())
+
+    def launch_reorder_attributes(self):
+        try:
+            if 'reorderAttributes' not in globals():
+                # import if not already imported
+                globals()['reorderAttributes'] = __import__('reorderAttributes')
+                reorderAttributes = globals()['reorderAttributes']
+                cmds.evalDeferred(reorderAttributes.install)
+            else:
+                reorderAttributes = globals()['reorderAttributes']
+            reorderAttributes.ui.show()
+        except IOError:
+            raise Exception('PathError(custom): Module not found in path!')
