@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+from pprint import pprint
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 from master_rigger import Splitter
@@ -126,7 +127,30 @@ curve_library = {
                        (-0.707107, 0.1, -0.707107), (0, 0.1, -1), (0, -0.1,
                        -1), (0.707107, -0.1, -0.707107), (0.707107, 0.1,
                        -0.707107), (1, 0.1, 0), (1, -0.1, 0), (0.707107,
-                       -0.1, 0.707107)])
+                       -0.1, 0.707107)]),
+    'double_arrow': partial(cmds.curve,
+                            d=1,
+                            p=[(1, 0, 0), (1, 0, -1), (1, 0, -2), (1, 0, -3),
+                               (2, 0, -3), (1, 0, -4), (0, 0, -5), (-1, 0, -4),
+                               (-2, 0, -3), (-1, 0, -3), (-1, 0, -2), (-1, 0, -1),
+                               (-1, 0, 0), (-1, 0, 1), (-1, 0, 2), (-1, 0, 3),
+                               (-2, 0, 3), (-1, 0, 4), (0, 0, 5), (1, 0, 4),
+                               (2, 0, 3), (1, 0, 3), (1, 0, 2), (1, 0, 1)]),
+    'half_circle': partial(cmds.curve,
+                           d=3,
+                           p=[(7.199780051661553e-19, 6.123233995736767e-17, -0.9999999999999999),
+                              (-0.10447515585510377, 6.123233995736767e-17, -0.9999999999999999),
+                              (-0.3132852867940712, 5.899899835693993e-17, -0.9635267637659666),
+                              (-0.5943487937195443, 5.011026650192372e-17, -0.8183627562953246),
+                              (-0.8231292854416953, 3.662258371768934e-17, -0.5980921804260191),
+                              (-0.9658174718568318, 1.9206515277889067e-17, -0.3136661981440106),
+                              (-1.0107957168152208, 3.159126961902688e-32, -3.0373923862181407e-16),
+                              (-0.9658174718568332, -1.9206515277889046e-17, 0.3136661981440098),
+                              (-0.8231292854416946, -3.662258371768931e-17, 0.598092180426019),
+                              (-0.5943487937195449, -5.01102665019237e-17, 0.8183627562953251),
+                              (-0.31328528679407086, -5.899899835693988e-17, 0.9635267637659651),
+                              (-0.10447515585510486, -6.123233995736766e-17, 1.0),
+                              (-4.718445737074547e-16, -6.123233995736766e-17, 1.0)])
 }
 
 curve_library_bool = {
@@ -141,13 +165,15 @@ curve_library_bool = {
     'quad_arrow': True,
     'arrow': True,
     'plus': True,
-    'ring': True
+    'ring': True,
+    'double_arrow': True,
+    'half_circle': False
 }
 
 rgb_dictionary = {
     'red': [1, 0, 0],
-    'pink': [1, .25, .25],
-    'orange': [1, .2, 0],
+    'pink': [1, .5, .5],
+    'orange': [1, .4, 0],
     'yellow': [1, 1, 0],
     'green': [0, 1, 0],
     'cyan': [0, 1, 1],
@@ -173,6 +199,7 @@ rgb_actuals = {
 }
 
 
+# kwargs: input_object
 def set_control_color(rgb_input, input_object=None):
     """
     Sets an override color value to an object or shape node for the purpose of
@@ -190,11 +217,9 @@ def set_control_color(rgb_input, input_object=None):
     if not input_object:
         try:
             obj = cmds.ls(selection=True)
-            print obj[0]
             if cmds.objectType(obj[0]) == 'nurbsCurve':
                 input_object = obj
             else:
-                print 'using children'
                 input_object = cmds.listRelatives(
                     cmds.ls(selection=True, long=True)[0], shapes=True)
         except TypeError:
@@ -214,23 +239,47 @@ def set_control_color(rgb_input, input_object=None):
         # from the add_curve_shape function
         rgb = cmds.colorEditor(query=True, rgb=True)
 
-    print rgb
-
     if isinstance(input_object, list):
         for shape in input_object:
-            cmds.setAttr(shape + '.overrideEnabled', 1)
-            cmds.setAttr(shape + '.overrideRGBColors', 1)
-            cmds.setAttr(shape + '.overrideColorR', rgb[0])
-            cmds.setAttr(shape + '.overrideColorG', rgb[1])
-            cmds.setAttr(shape + '.overrideColorB', rgb[2])
+            if cmds.objectType(shape) == 'nurbsCurve':
+                cmds.setAttr(shape + '.overrideEnabled', 1)
+                cmds.setAttr(shape + '.overrideRGBColors', 1)
+                cmds.setAttr(shape + '.overrideColorR', rgb[0])
+                cmds.setAttr(shape + '.overrideColorG', rgb[1])
+                cmds.setAttr(shape + '.overrideColorB', rgb[2])
+            else:
+                # Only work on shape nodes, and account for multi-shape controls
+                shapeNodes = cmds.listRelatives(cmds.ls(selection=True)[0], shapes=True, fullPath=True)
+                if shapeNodes is None:
+                    return
+                for shape in shapeNodes:
+                    cmds.setAttr(shape + '.overrideEnabled', 1)
+                    cmds.setAttr(shape + '.overrideRGBColors', 1)
+                    cmds.setAttr(shape + '.overrideColorR', rgb[0])
+                    cmds.setAttr(shape + '.overrideColorG', rgb[1])
+                    cmds.setAttr(shape + '.overrideColorB', rgb[2])
+
     else:
-        cmds.setAttr(input_object + '.overrideEnabled', 1)
-        cmds.setAttr(input_object + '.overrideRGBColors', 1)
-        cmds.setAttr(input_object + '.overrideColorR', rgb[0])
-        cmds.setAttr(input_object + '.overrideColorG', rgb[1])
-        cmds.setAttr(input_object + '.overrideColorB', rgb[2])
+        if cmds.objectType(input_object) == 'nurbsCurve':
+                cmds.setAttr(input_object + '.overrideEnabled', 1)
+                cmds.setAttr(input_object + '.overrideRGBColors', 1)
+                cmds.setAttr(input_object + '.overrideColorR', rgb[0])
+                cmds.setAttr(input_object + '.overrideColorG', rgb[1])
+                cmds.setAttr(input_object + '.overrideColorB', rgb[2])
+        else:
+            # Only work on shape nodes, and account for multi-shape controls
+            shapeNodes = cmds.listRelatives(input_object, shapes=True, fullPath=True)
+            if shapeNodes is None:
+                return
+            for shape in shapeNodes:
+                cmds.setAttr(shape + '.overrideEnabled', 1)
+                cmds.setAttr(shape + '.overrideRGBColors', 1)
+                cmds.setAttr(shape + '.overrideColorR', rgb[0])
+                cmds.setAttr(shape + '.overrideColorG', rgb[1])
+                cmds.setAttr(shape + '.overrideColorB', rgb[2])
 
 
+# TODO: Kwargs: transform_node?, color, off_color, shape_offset
 def add_curve_shape(shape_choice, transform_node=None, color=None,
                     off_color=False, shape_offset=(0, 0, 0)):
     """
@@ -260,12 +309,12 @@ def add_curve_shape(shape_choice, transform_node=None, color=None,
     """
     # curve library calling
     if not transform_node:
-        transform_node = cmds.ls(selection=True)[0]
+        selection = cmds.ls(selection=True)
+        if selection:
+            transform_node = selection[0]
 
     if not transform_node:
-        cmds.warning('No input given for the transform_node! Please select an '
-                     'object or input a parameter.')
-        return
+        transform_node = cmds.createNode('transform', name=shape_choice)
 
     curve_transform = curve_library[shape_choice]()
     curve_shape = cmds.listRelatives(curve_transform, shapes=True)
@@ -438,12 +487,18 @@ class ControlCurveWidget(QtWidgets.QFrame):
         self.offset_index_combo = QtWidgets.QComboBox()
         self.offset_index_combo.addItem('ZERO')
         self.offset_index_combo.addItem('OFS')
+        self.offset_index_combo.setCurrentIndex(1)
         # BELOW LINES are used for depicting line edit through dark QFrame
         self.offset_index_combo.setStyleSheet(
             'background-color : rgb(57, 58, 60);')
         # Condition setup to run hierarchy query
-        self.offset_hierarchy_inputs_list.append(self.offset_index_combo)
-        self.offset_hierarchy_inputs_dict[self.offset_index_combo] = 'preset'
+        # self.offset_hierarchy_inputs_list.append(self.offset_index_combo)
+        # self.offset_hierarchy_inputs_dict[self.offset_index_combo] = 'preset'
+
+        # Beta reconstruction of offset querying:
+        self.offset_hierarchy_inputs_dict[0] = self.offset_index_combo
+
+        # ------------------------------------ #
 
         offset_frame_layout.addWidget(offset_label)
         offset_frame_layout.addWidget(self.offset_index_combo)
@@ -527,12 +582,14 @@ class ControlCurveWidget(QtWidgets.QFrame):
             [value * 255 for value in rgb_dictionary[preset_color]]
         if new_preset_color != self.current_button_color:
             self._force_button_update(color=new_preset_color)
-
+            # Button needs 0-255 values, actuals should be accurate for shape assignment
             self.current_button_color = new_preset_color
-            self.current_assign_color = rgb_dictionary[preset_color]
+            self.current_assign_color = rgb_actuals[preset_color]
 
     def set_control_color(self):
-        set_control_color(rgb_input=self.current_assign_color)
+        nodes = cmds.ls(selection=True)
+        for node in nodes:
+            set_control_color(rgb_input=self.current_assign_color, input_object=node)
 
     def _force_button_update(self, color):
         self.color_option_button.setStyleSheet(
@@ -575,37 +632,62 @@ class ControlCurveWidget(QtWidgets.QFrame):
         new_custom_offset_layout = QtWidgets.QHBoxLayout()
         self.offset_frame.layout().addLayout(new_custom_offset_layout)
 
-        self.new_offset_label = QtWidgets.QLabel('Sub-Parent Custom Offset:')
-        self.new_offset_line_edit = QtWidgets.QLineEdit('')
-        self.new_offset_line_edit.setStyleSheet(
+        new_offset_label = QtWidgets.QLabel('Sub-Parent Custom Offset:')
+        new_offset_line_edit = QtWidgets.QLineEdit('')
+        new_offset_x_button = QtWidgets.QPushButton('X')
+        new_offset_x_button.setFixedHeight(20)
+        new_offset_x_button.setFixedWidth(20)
+        new_offset_line_edit.setStyleSheet(
             'background-color : rgb(57, 58, 60);'
         )
+        new_offset_x_button.setStyleSheet(
+            'border-radius: 10px;  background-color : rgb(87, 88, 90); font-weight: bold;'
+        )
 
-        self.offset_hierarchy_inputs_list.append(self.new_offset_line_edit)
-        self.offset_hierarchy_inputs_dict[self.new_offset_line_edit] = 'custom'
+        # self.offset_hierarchy_inputs_list.append(self.new_offset_line_edit)
+        # self.offset_hierarchy_inputs_dict[self.new_offset_line_edit] = 'custom'
 
-        new_custom_offset_layout.addWidget(self.new_offset_label)
-        new_custom_offset_layout.addWidget(self.new_offset_line_edit)
+        order_key = max(self.offset_hierarchy_inputs_dict.keys()) + 1
+        self.offset_hierarchy_inputs_dict[order_key] = new_offset_line_edit
 
+        new_custom_offset_layout.addWidget(new_offset_label)
+        new_custom_offset_layout.addWidget(new_offset_line_edit)
+        new_custom_offset_layout.addWidget(new_offset_x_button)
+
+        new_offset_x_button.clicked.connect(
+            partial(self.remove_offset_option, order_key, new_custom_offset_layout))
         # Need a callback method to query what value is at end in order
 
     def add_preset_offset(self):
         new_preset_offset_layout = QtWidgets.QHBoxLayout()
         self.offset_frame.layout().addLayout(new_preset_offset_layout)
 
-        self.new_offset_label = QtWidgets.QLabel('Sub-Parent Preset Offset:')
-        self.new_offset_combo = QtWidgets.QComboBox()
+        new_offset_label = QtWidgets.QLabel('Sub-Parent Preset Offset:')
+        new_offset_combo = QtWidgets.QComboBox()
         for preset in self.offset_index_list:
-            self.new_offset_combo.addItem(preset)
-        self.new_offset_combo.setStyleSheet(
+            new_offset_combo.addItem(preset)
+        new_offset_x_button = QtWidgets.QPushButton('X')
+        new_offset_x_button.setFixedHeight(20)
+        new_offset_x_button.setFixedWidth(20)
+        new_offset_combo.setStyleSheet(
             'background-color : rgb(57, 58, 60);'
         )
+        new_offset_x_button.setStyleSheet(
+            'border-radius: 10px; background-color: rgb(87, 88, 90); font-weight: bold;'
+        )
 
-        self.offset_hierarchy_inputs_list.append(self.new_offset_combo)
-        self.offset_hierarchy_inputs_dict[self.new_offset_combo] = 'preset'
+        # self.offset_hierarchy_inputs_list.append(self.new_offset_combo)
+        # self.offset_hierarchy_inputs_dict[self.new_offset_combo] = 'preset'
 
-        new_preset_offset_layout.addWidget(self.new_offset_label)
-        new_preset_offset_layout.addWidget(self.new_offset_combo)
+        order_key = max(self.offset_hierarchy_inputs_dict.keys()) + 1
+        self.offset_hierarchy_inputs_dict[order_key] = new_offset_combo
+
+        new_preset_offset_layout.addWidget(new_offset_label)
+        new_preset_offset_layout.addWidget(new_offset_combo)
+        new_preset_offset_layout.addWidget(new_offset_x_button)
+
+        new_offset_x_button.clicked.connect(
+            partial(self.remove_offset_option, order_key, new_preset_offset_layout))
 
     def build_hierarchy_parameter(self):
         selected = cmds.ls(selection=True)
@@ -613,17 +695,35 @@ class ControlCurveWidget(QtWidgets.QFrame):
             self.build_hierarchy(control_object=control)
 
     def build_hierarchy(self, control_object):
-        for item in self.offset_hierarchy_inputs_list:
-            if self.offset_hierarchy_inputs_dict[item] == 'preset':
-                offset_name = str(item.currentText()).strip()
-                self.hierarchy_list.append(offset_name)
-            elif self.offset_hierarchy_inputs_dict[item] == 'custom':
-                offset_name = str(item.text()).strip()
-                self.hierarchy_list.append(offset_name)
-            else:
+        self.hierarchy_list = []
+        # Beta:
+        highest_index_key = max(self.offset_hierarchy_inputs_dict.keys()) + 1
+        for index in range(highest_index_key):
+            hierarchy_widget = self.offset_hierarchy_inputs_dict.get(index)
+            if not hierarchy_widget:
                 continue
+            # Check widget type to call correct text evaluator
+            if isinstance(hierarchy_widget, QtWidgets.QComboBox):
+                offset_name = str(hierarchy_widget.currentText()).strip()
+            elif isinstance(hierarchy_widget, QtWidgets.QLineEdit):
+                offset_name = str(hierarchy_widget.text()).strip()
+
+            self.hierarchy_list.append(offset_name)
 
         for offset in self.hierarchy_list:
             tool.create_offset(suffix=offset, input_object=control_object)
 
-        self.hierarchy_list = []
+    def remove_offset_option(self, key, layout):
+        self.clear_layout(layout)
+        self.offset_hierarchy_inputs_dict.pop(key, None)
+
+    # Pyside Utility
+    def clear_layout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clear_layout(item.layout())
