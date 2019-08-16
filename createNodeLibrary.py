@@ -50,7 +50,7 @@ node_dictionary = {
     'RMPV': partial(cmds.shadingNode, 'remapValue', asUtility=True),
     'SR': partial(cmds.shadingNode, 'setRange', asUtility=True),
     'UC': partial(cmds.shadingNode, 'unitConversion', asUtility=True),
-    'VECP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True),
+    'VP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True),
 }
 
 node_name_dictionary = {
@@ -108,8 +108,9 @@ node_name_dictionary = {
     'SR': 'SR',
     'unitConversion': 'UC',
     'UC': 'UC',
-    'vectorProduct': 'VECP',
-    'VECP': 'VECP',
+    'vectorProduct': 'VP',
+    'VECP': 'VP',
+    'VP': 'VP',
 }
 
 
@@ -126,12 +127,17 @@ def create_node(node_key, name=None):
         node_name (str): Name of node for further use.
 
     """
-    if not name:
-        name = cmds.ls(selection=True)[0]
     try:
         node = node_dictionary[node_name_dictionary[node_key]]()
     except:  # check exception type
         raise Exception('Node type ({}) not yet implemented!'.format(node_key))
+
+    if not name:
+        if cmds.ls(selection=True):
+            name = cmds.ls(selection=True)[0]
+        else:
+            name = cmds.objectType(node)
+
     node_name = cmds.rename(node,
                             '%s_%s' % (name, node_name_dictionary[node_key]))
     return node_name
