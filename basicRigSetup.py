@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 
 from master_rigger import curve_assignment as crv
+from master_rigger import createNodeLibrary as node
 
 
 def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v):
@@ -50,9 +51,7 @@ def simple_rig_setup(rig_name):  # input as needed
     # global under placement
     cmds.parent(global_master, group_names[11])
     # connecting global move parts to the matrix of the master controllers
-    global_matrix = cmds.shadingNode('decomposeMatrix',
-                                     asUtility=True,
-                                     name='global_DCMX')
+    global_matrix = node.create_node('DCPM', name='GLOBAL')
     cmds.connectAttr(local_master[0] + '.worldMatrix[0]',
                      global_matrix + '.inputMatrix')
     cmds.connectAttr(global_matrix + '.outputTranslate',

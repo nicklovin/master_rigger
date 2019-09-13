@@ -22,6 +22,8 @@ CurveAssignment:
 - Widget should have an overrideName checkbox as an option.
 - New Curve types:
   - double/2-sided arrow
+- add_curve_shape should be renamed and repurposed
+  - if no transform node is given, create one itself
 
 AttributeManipulation:
 ----------------------
@@ -46,6 +48,7 @@ BasicTools:
 
 UniqueTools:
 ------------
+- Smart node duplicator that search + replaces all nodes in a hierarchy
 - Create a gui/dock add-on that can display the live attributes of input/selected objects.
   - Goal of this is to be able to evaluate what is changed by certain attributes
   - Work example: Switching between IKFK, and there's influence rotation when everything should be 0.  I want to see the values being affected without having to flip between the node editor or create keys just to live eval the numbers.
@@ -66,8 +69,14 @@ Pop-up Class:
 - Create a pop-up window for warnings and errors that most users would not notice otherwise
 - Can handle additional features such as a command-writable button that will run the suggested fix or work-around
 
+Basic Rig Setup:
+----------------
+- Has been cleaned up to work with existing modules
+- Should be implemented into dock, and cleaned up again in more efficient ways
+
 Others:
 -------
+- Build custom node to class assignment system (or adapt pymel)
 - Create assorted os/sys related commands to improve file-based work.  (Likely don't use a translator file, good practice not to)
 - Create new translator file for general python utility extensions
   - ex. random functions (random.randint()), math functions, re functions (regex), etc.

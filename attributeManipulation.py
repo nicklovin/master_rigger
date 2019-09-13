@@ -139,6 +139,7 @@ def create_attr(attribute_name, attribute_type, input_object=None,
             longName=attribute_name + 'Y',
             attributeType='doubleAngle',
             parent=attribute_name)
+
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'Z',
