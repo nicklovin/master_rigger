@@ -150,6 +150,22 @@ def match_transformations(translation=True, rotation=True, scale=False,
         cmds.xform(target, scale=scaling, relative=True)
 
 
+def offset_joint_hierarchy(joints):
+    """
+    Offsets a hierarchy of joints with SRT groups, detaching the visible bones
+    """
+    # Add the new ensureArray function from the os wrapper when added to github
+    # Also consider option to just select hierarchy parent to run
+    parent_srt = None
+    for jnt in joints:
+        srt = create_offset(suffix='SRT', input_object=jnt)
+        if parent_srt:
+            # parent to the above srt offset then clean the hierarchy children order
+            cmds.parent(srt, parent_srt)
+            cmds.reorder(srt, front=True)
+        parent_srt = srt
+
+
 class OffsetNodeWidget(QtWidgets.QFrame):
 
     def __init__(self):
