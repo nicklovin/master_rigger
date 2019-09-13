@@ -133,17 +133,18 @@ def create_attr(attribute_name, attribute_type, input_object=None,
             input_object,
             longName=attribute_name + 'X',
             attributeType='doubleAngle',
-            parent='newRotation')
+            parent=attribute_name)
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'Y',
             attributeType='doubleAngle',
-            parent='newRotation')
+            parent=attribute_name)
+
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'Z',
             attributeType='doubleAngle',
-            parent='newRotation')
+            parent=attribute_name)
 
         for axis in ['X', 'Y', 'Z']:
             cmds.setAttr('%s.%s%s' % (input_object, attribute_name, axis),
@@ -185,6 +186,24 @@ def create_attr(attribute_name, attribute_type, input_object=None,
             cmds.addAttr('%s.%s' % (input_object, attribute_name),
                          edit=True,
                          min=min_value)
+
+
+# Wrapper with option to override on locked attributes
+def connect_attr(source, target, **kwargs):
+    force = kwargs.get('force')
+    try:
+        cmds.connectAttr(source, target, force=force)
+    except Exception as err:
+        if kwargs.get('override'):
+            sourceLock = cmds.getAttr(source, lock=True)
+            targetLock = cmds.getAttr(target, lock=True)
+            cmds.setAttr(source, lock=False)
+            cmds.setAttr(target, lock=False)
+            cmds.connectAttr(source, target, force=force)
+            cmds.setAttr(source, lock=sourceLock)
+            cmds.setAttr(target, lock=targetLock)
+        else:
+            raise err
 
 
 class AttributeWidget(QtWidgets.QFrame):
