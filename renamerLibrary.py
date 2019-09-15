@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+import pymel.core as pm
 from string import ascii_uppercase
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -12,21 +13,20 @@ def get_short_name(longname):
     """
     Returns the shortname of an input object.
     """
-    short_name = longname.rsplit('|', 1)[-1]
-    return short_name
+    return longname.rsplit('|', 1)[-1]
 
 
 def get_long_name(name):
     """
     Returns the longname of an object.
     """
-    long_name = cmds.ls(name, long=True)[0]
-    return long_name
+    return cmds.ls(name, long=True)[0]
 
 
+# TODO: Kwargs: numeric_index, start_number?, upper_case, end_name,
+# TODO: name_list should be required and renamed
 def list_renamer(new_name, numeric_index=True, start_number=1,
-                 upper_case=True, end_name=False, selection=True,
-                 list_input=[]):
+                 upper_case=True, end_name=False, name_list=[]):
     """
     Renamer tool for renaming lists of objects.  Default works based off
     selection, but can take a list parameter when function is passed with larger
@@ -43,9 +43,7 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
         upper_case (bool): Assign  alphabet identifier as uppercase or lowercase.
         end_name (bool): Assign if the last object in the list should have the
             numeric value replaced with 'END'.
-        selection (bool): Assign if the input should query the selection or an
-            input list.  Default is True.
-        list_input (list[str]): Assign the function to perform based on a list
+        name_list (list[str]): Assign the function to perform based on a list
             input not limited to selection.  Only active when selection argument
             is False.
 
@@ -53,34 +51,36 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
         (list): List of all the newly named nodes.
 
     """
-    if selection:
-        name_list = cmds.ls(selection=True, long=True)
+    if name_list:
+        # ensure pymel nodes
+        name_list = pm.ls(name_list)
     else:
-        name_list = list_input
+        name_list = pm.ls(selection=True)
+
     index_start = max(0, start_number)
 
     if '#' not in new_name:
-        cmds.warning('Could not find any "#" in name.')
-        return
+        # Give this a proper error
+        raise KeyError('Could not find any "#" in name.')
 
-    pad_replace = ''
     number_padding = new_name.count('#')
-    for i in range(number_padding):
-        pad_replace = pad_replace + '#'
 
     new_name_list = []
     # Numeric renaming
     if numeric_index:
+        name_replace = new_name.replace(
+            ('#' * number_padding), '%0{pad}d'.format(pad=number_padding))
         index = index_start
 
         for i in name_list:
-            padded_index = str(index).zfill(number_padding)
-            cmds.rename(i, new_name.replace(pad_replace, padded_index))
-            new_name_list.append(new_name.replace(pad_replace, padded_index))
-            index = index + 1
+            i.rename(name_replace % index)
+
+            new_name_list.append(i.name())
+            index += 1
 
     # Alphanumeric renaming
     else:
+        name_replace = new_name.replace(('#' * number_padding), '%s')
         # If index is not 0, the index will be changed to start letters at
         # appropriate alphanumeric count
         if index_start > 0:
@@ -104,31 +104,36 @@ def list_renamer(new_name, numeric_index=True, start_number=1,
                 index = 1
             if letter_index:
                 if upper_case:
-                    padded_index = letter_index + LETTERS_INDEX[index]
+                    alpha_index = letter_index + LETTERS_INDEX[index]
                 else:
-                    padded_index = letter_index.lower() \
+                    alpha_index = letter_index.lower() \
                                    + str(LETTERS_INDEX[index]).lower()
 
             else:
                 if upper_case:
-                    padded_index = LETTERS_INDEX[index]
+                    alpha_index = LETTERS_INDEX[index]
                 else:
-                    padded_index = str(LETTERS_INDEX[index]).lower()
+                    alpha_index = str(LETTERS_INDEX[index]).lower()
 
-            cmds.rename(i, new_name.replace(pad_replace, padded_index))
-            new_name_list.append(new_name.replace(pad_replace, padded_index))
-            index = index + 1
+            i.rename(name_replace % alpha_index)
+            new_name_list.append(i.name())
+            index += 1
 
     # After indexes are all named, check if last object should be an 'end'
     if end_name:
-        new_name_list[-1] = cmds.rename(new_name_list[-1],
-                                        new_name.replace(pad_replace, 'END'))
+        name_parts = new_name.split('#')
+        end_name = '{pre}END{post}'.format(pre=name_parts[0], post=name_parts[-1])
+        endNode = pm.ls(new_name_list[-1])[0]
+        endNode.rename(end_name)
+        new_name_list[-1] = endNode.name()
 
     return new_name_list
 
 
-def set_prefix(input_prefix, add=True, replace=False, remove=False,
-               list_input=[]):
+# TODO: add/replace/remove changed to method, made required
+# TODO: name_list made required
+def set_prefix(input_prefix='', add=False, replace=False, remove=False,
+               name_list=[]):
     """
     Prefix setting tool.  Allows for a prefix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
@@ -142,76 +147,69 @@ def set_prefix(input_prefix, add=True, replace=False, remove=False,
             add (bool): Assign the function to add a new prefix
             replace (bool): Assign the function to replace an existing prefix
             remove (bool): Assign the function to remove an existing prefix.
-        list_input (list[str]): Allows for a provided list to be performed on.
+        name_list (list[str]): Allows for a provided list to be performed on.
             Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
-        cmds.error('Can only set one type flag at a time!  Use only one of'
+        raise KeyError('Can only set one type flag at a time!  Use only one of'
                    ' the following: add, replace, remove.')
 
     if not add and not replace and not remove:
-        cmds.error('No argument specified for the function to perform!  Set a '
+        raise KeyError('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
 
-    if not list_input:
-        name_list = cmds.ls(selection=True, long=True)
+    if name_list:
+        # ensure pymel nodes
+        name_list = pm.ls(name_list)
     else:
-        name_list = list_input
+        name_list = pm.ls(selection=True)
 
     name_return_list = []
+    if input_prefix.endswith('_'):
+        input_prefix = input_prefix[:-1]
 
     if add:
+        if input_prefix == '':
+            raise KeyError('No prefix given!')
         for i in name_list:
             short_i = get_short_name(i)
-            if i[0] == '_':
-                new_i = cmds.rename(i, short_i[1:])
-                new_name = cmds.rename(new_i, '%s_%s' % (input_prefix, new_i))
+            if i.startswith('_'):
+                i.rename('%s_%s' % (input_prefix, i[1:]))
             else:
-                new_name = cmds.rename(i, '%s_%s' % (input_prefix, short_i))
-            name_return_list.append(new_name)
+                i.rename('%s_%s' % (input_prefix, short_i))
+            name_return_list.append(i.name())
         return name_return_list
 
     if replace:
-        kill_length_list = []
+        if input_prefix == '':
+            raise KeyError('No prefix given!')
         for obj in name_list:
-            kill_length = obj.find('_')
-            kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            new_name = cmds.rename(
-                i, i.replace(i[0:kill_length_list[number]], input_prefix))
-            number = number + 1
-            name_return_list.append(new_name)
+            if obj.startswith('_'):
+                obj.rename(input_prefix + obj)
+            else:
+                name_parts = obj.split('_')
+                obj.rename('_'.join([input_prefix] + name_parts[1:]))
+            name_return_list.append(obj.name())
         return name_return_list
 
     if remove:
-        kill_length_list = []
         for obj in name_list:
-            if '_' in obj:
-                kill_length = obj.find('_')
-                kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[0] == '_':
-                new_name = cmds.rename(i, i[1:])
-            elif i[0] is int:
-                cmds.warning('Removing the prefix causes object to begin with '
-                             'illegal characters (integer). Object skipped for '
-                             'procedure.')
+            if obj.startswith('_'):
+                obj.rename(obj[1:])
+                name_return_list.append(obj.name())
             else:
-                new_name = cmds.rename(
-                        i, i[0:(kill_length_list[number] + 1)])
-            number = number + 1
-            name_return_list.append(new_name)
+                name_parts = obj.split('_')
+                obj.rename('_'.join(name_parts[1:]))
+                name_return_list.append(obj.name())
         return name_return_list
 
 
+# TODO: add/replace/remove changed to method, made required
+# TODO: name_list made required
 def set_suffix(input_suffix, add=True, replace=False, remove=False,
-               list_input=[]):
+               name_list=[]):
     """
     Prefix setting tool.  Allows for a suffix to be added, replaced, or removed
     based on user input.  Users must declare one of the Procedure Type Arguments
@@ -225,78 +223,67 @@ def set_suffix(input_suffix, add=True, replace=False, remove=False,
             add (bool): Assign the function to add a new suffix
             replace (bool): Assign the function to replace an existing suffix
             remove (bool): Assign the function to remove an existing suffix.
-        list_input (list[str]): Allows for a provided list to be performed on.
+        name_list (list[str]): Allows for a provided list to be performed on.
             Only works if selection flag is False.
 
     """
     if (add and replace) or (add and remove) or (replace and remove):
-        cmds.error('Can only set one type flag at a time!  Use only one of'
+        pm.error('Can only set one type flag at a time!  Use only one of'
                    ' the following: add, replace, remove.')
 
     if not add and not replace and not remove:
-        cmds.error('No argument specified for the function to perform!  Set a '
+        pm.error('No argument specified for the function to perform!  Set a '
                    'value of True to one of the following: add, replace, '
                    'remove.')
 
-    if not list_input:
-        name_list = cmds.ls(selection=True, long=True)
+    if name_list:
+        # ensure pymel nodes
+        name_list = pm.ls(name_list)
     else:
-        name_list = list_input
+        name_list = pm.ls(selection=True)
 
     name_return_list = []
+    if input_suffix.startswith('_'):
+        input_suffix = input_suffix[1:]
 
     if add:
-        for i in name_list:
-            short_i = get_short_name(i)
-            if i[-1] == '_':
-                new_name = cmds.rename(i, '%s%s' % (short_i, input_suffix))
-
+        if input_suffix == '':
+            raise KeyError('No suffix given!')
+        for obj in name_list:
+            if obj.endswith('_'):
+                obj.rename('%s%s' % (obj, input_suffix))
             else:
-                new_name = cmds.rename(i, '%s_%s' % (short_i, input_suffix))
-            # Test string to diagnose why function is not iterating properly:
-            print '{} -> {}'.format(short_i, new_name)
-            name_return_list.append(new_name)
+                obj.rename('%s_%s' % (obj, input_suffix))
+            name_return_list.append(obj.name())
+        return name_return_list
 
     if replace:
-        kill_length_list = []
+        if input_suffix == '':
+            raise KeyError('No suffix given!')
         for obj in name_list:
-            if '_' in obj:
-                kill_length = obj.rfind('_')
-                kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[-1] == '_':
-                new_name = cmds.rename(i, '%s%s' % (i, input_suffix))
+            if obj.endswith('_'):
+                obj.rename(obj, obj + input_suffix)
             else:
-                new_name = cmds.rename(i,
-                                       '%s_%s' % (i[:kill_length_list[number]],
-                                                  input_suffix))
-                print i[kill_length_list[number]:]
-            name_return_list.append(new_name)
-            number = number + 1
+                name_parts = obj.split('_')
+                obj.rename('_'.join(name_parts[:-1] + [input_suffix]))
+                name_return_list.append(obj.name())
+        return name_return_list
 
     if remove:
-        kill_length_list = []
         for obj in name_list:
-            kill_length = obj.rfind('_')
-            kill_length_list.append(kill_length)
-
-        number = 0
-        for i in name_list:
-            if i[-1] == '_':
-                cmds.rename(i, i[1:-1])
+            if obj.endswith('_'):
+                obj.rename(obj[:-1])
+                name_return_list.append(obj.name())
             else:
-                new_name = \
-                    cmds.rename(i, i[kill_length_list[number]:])
-                name_return_list.append(new_name)
-            number = number + 1
-
-    return name_return_list
+                name_parts = obj.split('_')
+                obj.rename('_'.join(name_parts[:-1]))
+                name_return_list.append(obj.name())
+        return name_return_list
 
 
+# Make this work, long and short names cause hell
 def search_replace_name(search_input, replace_output, hierarchy=False,
-                        input_object=[]):
+                        input_objects=[]):
     """
     Python equivalent of the mel searchReplaceNames procedure.  Created to work
     with GUIs and python-written scripts.
@@ -306,59 +293,61 @@ def search_replace_name(search_input, replace_output, hierarchy=False,
         replace_output (str): String used to replace the input string.
         hierarchy (bool): Declare the range/scope of the procedure to use all
             objects in hierarchy instead of just selection.
-        input_object (list[str]): Allows funciton to work based on a provided
+        input_objects (list[str]): Allows funciton to work based on a provided
             list.  If nothing given, selection is assumed.
 
     """
     name_return_list = []
 
+    if input_objects:
+        # ensure pymel nodes
+        input_objects = pm.ls(input_objects)
+    else:
+        input_objects = pm.ls(selection=True)
+
     if not hierarchy:
-        if input_object:
-            selection = input_object
-        else:
-            selection = cmds.ls(selection=True, long=True)
-        for obj in selection:
-            if search_input in obj:
-                new_name = cmds.rename(obj, get_short_name(obj).replace
-                                       (search_input, replace_output))
-                name_return_list.append(new_name)
+        for obj in input_objects:
+            if search_input in obj.name():
+                obj.rename(obj.name().replace(search_input, replace_output))
+                name_return_list.append(obj.name())
 
     else:
-        if input_object:
-            hierarchy = cmds.listRelatives(input_object) \
-                        + cmds.ls(selection=True, long=True)
-        else:
-            hierarchy = cmds.listRelatives(cmds.ls(selection=True, long=True)[0],
-                                           allDescendents=True) \
-                        + cmds.ls(selection=True, long=True)
-        for obj in hierarchy:
-            if search_input in obj:
-                new_name = cmds.rename(obj, obj.replace
-                                       (search_input, replace_output))
-                name_return_list.append(new_name)
+        hierarchyNodes = []
+        for obj in input_objects:
+            hierarchyNodes.extend(obj.getChildren(allDescendents=True))
+        hierarchyNodes.extend(input_objects)
+
+        for obj in hierarchyNodes:
+            if search_input in obj.name():
+                obj.rename(obj.name().replace(search_input, replace_output))
+                name_return_list.append(obj.name())
 
     return name_return_list
 
 
-def clear_end_digits(input_object=[]):
+# Make input_objects required?
+def clear_end_digits(input_objects=[]):
     name_return_list = []
 
-    if not input_object:
-        input_object = cmds.ls(selection=True, long=True)
+    if input_objects:
+        # ensure pymel nodes
+        input_objects = pm.ls(input_objects)
+    else:
+        input_objects = pm.ls(selection=True)
 
-    for obj in input_object:
+    for obj in input_objects:
         try:
-            int(obj[-1])
+            int(obj.name()[-1])
         except ValueError:
             continue
 
-        if cmds.objExists(obj[0:-1]):
-            cmds.warning('While removing end digits, another object with name '
+        if pm.objExists(obj.name()[:-1]):
+            pm.warning('While removing end digits, another object with name '
                          '"{}" was found.  Function may have failed to remove '
-                         'end digits properly.'.format(obj[0:-1]))
+                         'end digits properly.'.format(obj.name()[:-1]))
 
-        new_name = cmds.rename(obj, obj[0:-1])
-        name_return_list.append(new_name)
+        obj.rename(obj.name()[:-1])
+        name_return_list.append(obj.name())
 
     return name_return_list
 
@@ -673,7 +662,7 @@ class NamingWidget(QtWidgets.QFrame):
         self.prefix_remove_button.clicked.connect(
             partial(self.edit_prefix, False, False, True))
         self.prefix_replace_button.clicked.connect(
-            partial(self.edit_prefix, False, False, True))
+            partial(self.edit_prefix, False, True, False))
 
         self.suffix_add_button.clicked.connect(
             partial(self.edit_suffix, True, False, False))
@@ -785,10 +774,7 @@ class NamingWidget(QtWidgets.QFrame):
         find_text = str(self.find_line_edit.text()).strip()
         replace_text = str(self.replace_line_edit.text()).strip()
 
-        if self.selected_radio_button.isChecked():
-            select_scope = False
-        else:
-            select_scope = True
+        select_scope = not(self.selected_radio_button.isChecked())
 
         search_replace_name(
             search_input=find_text,

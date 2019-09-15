@@ -17,10 +17,13 @@ CurveAssignment:
 - Widget does not create unique controller when Create Control is clicked, forces a selection
 - Widget hierarchy list of offsets needs an 'X' button to remove unwanted parts.
   - Also seems to be mostly broken, performing the operation 3 times? (might be related to number of hierarchy groups)
+  - ***Subclass the operation to allow for easier widget manipulation and isolated methods
 - Widget correctly snaps to selection, but does not iterate over full list if more than one object is selected.
 - Widget should have an overrideName checkbox as an option.
 - New Curve types:
   - double/2-sided arrow
+- add_curve_shape should be renamed and repurposed
+  - if no transform node is given, create one itself
 
 AttributeManipulation:
 ----------------------
@@ -33,6 +36,9 @@ AttributeManipulation:
 CreateNodeLibrary:
 ------------------
 - Add 'composeMatrix' to node options and widget
+- Custom double to double3 node
+  - Converts single input to a triple output (parented under single attr) [pxrToFloat3 node as reference]
+  - Create script node, have backup that is just attrs added onto a unitConversion node (to avoid 'unknown' as type)
 
 BasicTools:
 -----------
@@ -42,6 +48,7 @@ BasicTools:
 
 UniqueTools:
 ------------
+- Smart node duplicator that search + replaces all nodes in a hierarchy
 - Create a gui/dock add-on that can display the live attributes of input/selected objects.
   - Goal of this is to be able to evaluate what is changed by certain attributes
   - Work example: Switching between IKFK, and there's influence rotation when everything should be 0.  I want to see the values being affected without having to flip between the node editor or create keys just to live eval the numbers.
@@ -50,6 +57,8 @@ UniqueTools:
   - Stores expected selection (quicker flashing on/off without selection highlighting and re-selection)
   - Replaces add/removeISO buttons on shelf
   - Option to store multiple selection sets to flip between isolated selections (less need for numerous camera panels)
+- Isolate types:
+  - In previous tab menu, add checkboxes of commonly adjusted viewport view items (ex. Polygons, NURBS, IKhandles, etc.)
 
 Splitter:
 ---------
@@ -60,12 +69,23 @@ Pop-up Class:
 - Create a pop-up window for warnings and errors that most users would not notice otherwise
 - Can handle additional features such as a command-writable button that will run the suggested fix or work-around
 
+Basic Rig Setup:
+----------------
+- Has been cleaned up to work with existing modules
+- Should be implemented into dock, and cleaned up again in more efficient ways
+
 Others:
 -------
+- Build custom node to class assignment system (or adapt pymel)
 - Create assorted os/sys related commands to improve file-based work.  (Likely don't use a translator file, good practice not to)
 - Create new translator file for general python utility extensions
   - ex. random functions (random.randint()), math functions, re functions (regex), etc.
 - Long Term Goal: Create translator/wrapper file for Qt functions.  
+- Create a bake transforms up function
+  - takes the transform values of a node and 0s them out, moving the values up to its parent
+  - good for late-term offsetting/changing values
+- Have a function that can build custom buttons onto the dock per session
+  - Should also have option to export the button layout/commands to be reloaded if desired
 
 
 NOTES ADDRESSED ON 12/18/2018:

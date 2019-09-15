@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+from math import pow, sqrt
 
 
 def get_selection():
@@ -113,3 +114,24 @@ def get_inverse_world_matrix(obj):
 
 def create_transform(name):
     return cmds.group(empty=True, name=name)
+
+
+def ensure_list(value):
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    if (value is None):
+        return []
+    return [value]
+
+
+def get_distance_between(A, B):
+    # If given vectors
+    if isinstance(A, (list, tuple)):
+        objA = A
+        objB = B
+    # Else given objects
+    else:
+        objA = get_position(A)
+        objB = get_position(B)
+
+    return sqrt(pow(objA[0] - objB[0], 2) + pow(objA[1] - objB[1], 2) + pow(objA[2] - objB[2], 2))
