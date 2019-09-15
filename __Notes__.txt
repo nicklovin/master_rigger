@@ -1,6 +1,76 @@
 Notes for changes from uses of these tools in practical application and day-to-day use.
 -----------------------------------------------------
 
+LimbBuilderTool:
+----------------
+- Age old twist joint issue solved!: http://charactersetup.com/tutorial_rollJoints.html
+  - Update the auto-rig functions to work based on this technique, adding an MDIV to adjust twist sensitivity
+
+RenamerLibrary:
+---------------
+- Still has issues with renaming on repeat objects, not causing long-name issues.  Do tests before finalizing anything else.
+- Suffix adding only affects first selection?
+
+CurveAssignment:
+----------------
+- Widget forces a selected = cmds.ls(sl=True)[0] when nothing might be selected.  Change to a try/except that leaves selected = None if it fails.
+- Widget does not create unique controller when Create Control is clicked, forces a selection
+- Widget hierarchy list of offsets needs an 'X' button to remove unwanted parts.
+  - Also seems to be mostly broken, performing the operation 3 times? (might be related to number of hierarchy groups)
+- Widget correctly snaps to selection, but does not iterate over full list if more than one object is selected.
+- Widget should have an overrideName checkbox as an option.
+- New Curve types:
+  - double/2-sided arrow
+
+AttributeManipulation:
+----------------------
+- min/max values should be open to accepting None values.  Skip incorrect conditions in function, accept noneTypes in class.
+- Warning about repeat attribute names is effective and gave good advice.  To improve, make a popup warning/error window class, then add a button that offers opening the channel control.
+- add keyable (attribute) checkbox to widget
+- create a preset library file for attribute widget to reference for faster assignment of common attributes
+  - can also have an option to save to a temp file for current project and/or save to library file for permanent additions
+
+CreateNodeLibrary:
+------------------
+- Add 'composeMatrix' to node options and widget
+
+BasicTools:
+-----------
+- Create offset tool that makes sense in the context of joint orientation (very specific usage)
+  - Would take in the direct orientation values AND the joint orient values and create an offset based exactly on direct orientation without calculating the joint orientation.  This is important for joints as the joints will maintain their joint orient values when placed in an offset group, this would help.
+  - A checkbox labeled 'Maintain Joint Orientation' should suffice.
+
+UniqueTools:
+------------
+- Create a gui/dock add-on that can display the live attributes of input/selected objects.
+  - Goal of this is to be able to evaluate what is changed by certain attributes
+  - Work example: Switching between IKFK, and there's influence rotation when everything should be 0.  I want to see the values being affected without having to flip between the node editor or create keys just to live eval the numbers.
+- Create button that takes a selected attribute from the channelbox and instantly displays input/outputs of it in the node editor
+- Isolate Selection (Menu?):
+  - Stores expected selection (quicker flashing on/off without selection highlighting and re-selection)
+  - Replaces add/removeISO buttons on shelf
+  - Option to store multiple selection sets to flip between isolated selections (less need for numerous camera panels)
+
+Splitter:
+---------
+- The dock gui issue of crushing the widget/splitter texts is likely due to the Splitter class not having a fixed height equal to the height of the text.  On resizing, the splitter line remains in tact.
+
+Pop-up Class:
+-------------
+- Create a pop-up window for warnings and errors that most users would not notice otherwise
+- Can handle additional features such as a command-writable button that will run the suggested fix or work-around
+
+Others:
+-------
+- Create assorted os/sys related commands to improve file-based work.  (Likely don't use a translator file, good practice not to)
+- Create new translator file for general python utility extensions
+  - ex. random functions (random.randint()), math functions, re functions (regex), etc.
+- Long Term Goal: Create translator/wrapper file for Qt functions.  
+
+
+NOTES ADDRESSED ON 12/18/2018:
+------------------------------
+
 RenamerLibrary:
 ---------------
 - Fails on all counts to change names if there is a duplicate name anywhere in the scene.  Probably needs to evaluate based on long names (cmds.ls(long=True)).
