@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 # from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools.widgets import mayaFrameWidget
 from master_rigger import createNodeLibrary as node
 from master_rigger import curve_assignment as crv
 from master_rigger import basicTools as tool
@@ -10,6 +11,7 @@ reload(node)
 reload(crv)
 reload(tool)
 reload(nUtils)
+reload(mayaFrameWidget)
 
 
 def vector_aim_constraint(source, target, up_position, aim_vector='x', up_vector='y'):
@@ -152,70 +154,21 @@ def simple_matrix_constraint(target=None, source=None, position=True,
 
 
 # Complete beta, no applicable testing, might be rewritten entirely
-def matrix_constraint(target=None, source=None, position=True, orientation=True,
-                      scale=False):
+def matrix_constraint(position=True, orientation=True, scale=False):
 
-    # Order of matrix operation conditions:
-    # - check values of the source object
-    # - understand the position hierarchy of the source
-    # - find the parent matrix of the source within its correct hierarchy
-    #   * if the local matrix == worldMatrix, use world inverse and skip hierarchy sorting
-    # - create a multMatrix based on the inverse parent and local matrix of the source
-    # - decompose the multMatrix to send values to the target
-
-    if not target:
-        try:
-            target = nUtils.get_selection_list()[0]
-        except Exception as err:
-            raise err
-
-    if not source:
-        try:
-            source = nUtils.get_selection_list()[1]
-        except Exception as err:
-            raise err
-
-    local_matrix = nUtils.get_matrix(source)
-    world_matrix = nUtils.get_world_matrix(source)
-
-    # if the local == world, hierarchy is irrelevant
-    if local_matrix == world_matrix:
-        simple_matrix_constraint(target=target, source=source, position=position,
-                                 orientation=orientation, scale=scale)
-        return
-
-    null_matrix = [1, 0, 0, 0,
-                   0, 1, 0, 0,
-                   0, 0, 1, 0,
-                   0, 0, 0, 1]
-
-    source_parent = nUtils.get_parent(source)
-    parent_matrix = nUtils.get_matrix(source_parent)
-
-    # check if this properly rounds to 0 for insignificant values
-    # Loops through parents until one with an offset value is found
-    while null_matrix == parent_matrix:
-        new_parent = nUtils.get_parent(source_parent)
-        parent_matrix = nUtils.get_matrix(new_parent)
-        source_parent = new_parent
-        # on final loop, source_parent will be the correct transform
-
-    parent_world_inverse_matrix = '{}.worldInverseMatrix'.format(source_parent)
-    world_matrix = '{}.worldMatrix'.format(source)
+    source, inverse, target = nUtils.get_selection_list()
 
     mult_matrix_node = node.create_node(
         node_key='MM',
-        name='{}_matrixSRT'.format(target))
+        name=source)
 
     decompose_node = node.create_node(
         node_key='DCPM',
-        name='{}_matrixSRT'.format(target))
+        name=source)
 
-    cmds.connectAttr(world_matrix, mult_matrix_node + '.inputMatrix[0]')
-    cmds.connectAttr(parent_world_inverse_matrix,
-                     mult_matrix_node + '.inputMatrix[1]')
-    cmds.connectAttr(mult_matrix_node + '.outputMatrix',
-                     decompose_node + '.inputMatrix')
+    cmds.connectAttr(source + '.worldMatrix[0]', mult_matrix_node + '.matrixIn[0]', f=True)
+    cmds.connectAttr(inverse + '.worldInverseMatrix[0]', mult_matrix_node + '.matrixIn[1]', f=True)
+    cmds.connectAttr(mult_matrix_node + '.matrixSum', decompose_node + '.inputMatrix', f=True)
 
     if position:
         cmds.connectAttr(decompose_node + '.outputTranslate', target + '.t')
@@ -358,7 +311,6 @@ class RivetWidget(QtWidgets.QFrame):
         # New Rivet Options---------------------------------------------#
         self.rivet_target_checkbox = QtWidgets.QCheckBox('Create New Rivet Object')
         self.rivet_target_checkbox.setChecked(True)
-        new_rivet_layout.addWidget(self.rivet_target_checkbox)
 
         new_rivet_layout.addWidget(self.rivet_target_checkbox)
         new_rivet_layout.addSpacerItem(
@@ -408,6 +360,66 @@ class RivetWidget(QtWidgets.QFrame):
         else:
             self.rivet_object_line_edit.setStyleSheet(self.disabled)
             self.rivet_name_line_edit.setStyleSheet(self.enabled)
+
+
+class ConstraintWidget(mayaFrameWidget.MayaFrameWidget):
+
+    def __init__(self):
+        QtWidgets.QFrame.__init__(self)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(1, 1, 1, 1)
+        self.layout().setSpacing(0)
+        self.layout().setAlignment(QtCore.Qt.AlignTop)
+
+        constrain_widget = QtWidgets.QWidget()
+        constrain_widget.setLayout(QtWidgets.QVBoxLayout())
+        constrain_widget.layout().setContentsMargins(2, 2, 2, 2)
+        constrain_widget.layout().setSpacing(5)
+        constrain_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                       QtWidgets.QSizePolicy.Fixed)
+        self.layout().addWidget(constrain_widget)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        srt_layout = QtWidgets.QHBoxLayout()
+
+        constrain_widget.layout().addLayout(button_layout)
+        constrain_widget.layout().addLayout(srt_layout)
+
+        # Buttons ------------------------------------------------------#
+        self.matrix_constrain_button = QtWidgets.QPushButton('Matrix Connection')
+
+        button_layout.addWidget(self.matrix_constrain_button)
+        # button_layout.addSpacerItem(
+        #     QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
+        # )
+        # TODO: any other relevant buttons...
+
+        # Checkboxes ---------------------------------------------------#
+
+        self.translate_checkbox = QtWidgets.QCheckBox('Translate')
+        self.translate_checkbox.setChecked(True)
+        self.rotate_checkbox = QtWidgets.QCheckBox('Rotate')
+        self.rotate_checkbox.setChecked(True)
+        self.scale_checkbox = QtWidgets.QCheckBox('Scale')
+        self.scale_checkbox.setChecked(False)
+
+        srt_layout.addWidget(self.translate_checkbox)
+        srt_layout.addWidget(self.rotate_checkbox)
+        srt_layout.addWidget(self.scale_checkbox)
+        # srt_layout.addSpacerItem(
+        #     QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Expanding)
+        # )
+
+        # Connections --------------------------------------------------#
+        self.matrix_constrain_button.clicked.connect(self.matrix_constrain)
+
+    def matrix_constrain(self):
+        t = self.translate_checkbox.checkState()
+        r = self.rotate_checkbox.checkState()
+        s = self.scale_checkbox.checkState()
+
+        matrix_constraint(position=t, orientation=r, scale=s)
 
 
 class VectorWidget(QtWidgets.QFrame):
@@ -520,7 +532,7 @@ class VectorWidget(QtWidgets.QFrame):
             up_vector=up_vector_axis)
 
 
-class PVWidget(QtWidgets.QFrame):
+class PVWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
         QtWidgets.QFrame.__init__(self)
@@ -618,6 +630,7 @@ class PVWidget(QtWidgets.QFrame):
         invalid_objects = [obj for obj in (ik_start, ik_pivot, ik_end) if not cmds.objExists(obj)]
 
         if invalid_objects:
-            raise NameError('No object matches name(s): {}'.format(str(invalid_objects)))
+            return self.popUpError(
+                NameError('No object matches name(s): {}'.format(str(invalid_objects))))
 
         create_pv_guide(ik_base=ik_start, ik_pivot=ik_pivot, ik_end=ik_end)
