@@ -113,6 +113,8 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                 'channelbox, check the Channel Control.'.format(input_object))
         return
 
+    compound_types = ('euler', 'double3')
+
     if attribute_type == 'enum':
         enum_list = ''
         for enum in enum_names:
@@ -123,41 +125,43 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                      enumName=enum_list,
                      defaultValue=default_value)
     # Do euler conditions better...
-    elif attribute_type == 'euler':
+    elif attribute_type in compound_types:
+        child_type = 'doubleAngle' if attribute_type == 'euler' else 'double'
         cmds.addAttr(
             input_object,
             longName=attribute_name,
-            attributeType='compound',
-            numberOfChildren=3)
+            attributeType='double3')
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'X',
-            attributeType='doubleAngle',
+            attributeType=child_type,
             parent=attribute_name)
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'Y',
-            attributeType='doubleAngle',
+            attributeType=child_type,
             parent=attribute_name)
-
         cmds.addAttr(
             input_object,
             longName=attribute_name + 'Z',
-            attributeType='doubleAngle',
+            attributeType=child_type,
             parent=attribute_name)
 
         for axis in ['X', 'Y', 'Z']:
             cmds.setAttr('%s.%s%s' % (input_object, attribute_name, axis),
                          edit=True,
-                         keyable=keyable,
                          channelBox=channelbox)
+            cmds.setAttr('%s.%s%s' % (input_object, attribute_name, axis),
+                         edit=True,
+                         keyable=True)
 
     else:
         cmds.addAttr(input_object,
                      longName=attribute_name,
                      attributeType=attribute_type,
                      defaultValue=default_value)
-    if attribute_type != 'euler':
+
+    if attribute_type not in compound_types:
         if keyable:
             cmds.setAttr('%s.%s' % (input_object, attribute_name),
                          edit=True,
@@ -169,7 +173,7 @@ def create_attr(attribute_name, attribute_type, input_object=None,
                          channelBox=channelbox)
 
     # If value is a number, check for min/max values
-    if 'float' or 'double' or 'int' or 'long' in attribute_type:
+    if attribute_type in ('float', 'double', 'int', 'long', 'doubleAngle'):
         if max_value is not None and min_value is not None:
             cmds.addAttr('%s.%s' % (input_object, attribute_name),
                          edit=True,
@@ -302,7 +306,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         'Enum': 'enum',
         'EulerXYZ': 'euler',
         'Float': 'double',
-        'FloatXYZ': 'float3',
+        'FloatXYZ': 'double3',
         'Integer': 'long',
         'Matrix': 'fltMatrix',
         'Spacer': 'enum'
@@ -367,8 +371,8 @@ class AddAttributesWidget(QtWidgets.QFrame):
 
         attr_type_label = QtWidgets.QLabel('Attribute Type:')
         self.attr_type_combo = QtWidgets.QComboBox()
-        for type in self.attribute_types_order:
-            self.attr_type_combo.addItem(type)
+        for attr_type in self.attribute_types_order:
+            self.attr_type_combo.addItem(attr_type)
         self.attr_type_combo.setFixedWidth(100)
 
         self.attr_keyable_check = QtWidgets.QCheckBox('Keyable')
