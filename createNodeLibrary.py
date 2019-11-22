@@ -1,10 +1,14 @@
 import maya.cmds as cmds
+import maya.mel as mel
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 # import re
+
 import Splitter
 
-from master_rigger import cmdsTranslator as nUtils
+# from master_rigger import cmdsTranslator as nUtils
+
+plugin_node_name_dictionary = {}
 
 
 # Custom nodes
@@ -51,6 +55,154 @@ node_dictionary = {
     'SR': partial(cmds.shadingNode, 'setRange', asUtility=True),
     'UC': partial(cmds.shadingNode, 'unitConversion', asUtility=True),
     'VP': partial(cmds.shadingNode, 'vectorProduct', asUtility=True),
+}
+
+math_node_dictionary = {
+    'Absolute': 'ABS',
+    'AbsoluteAngle': 'angABS',
+    'AbsoluteInt': 'intABS',
+    'Acos': 'ACOS',
+    'Add': 'ADD',
+    'AddAngle': 'angADD',
+    'AddInt': 'intADD',
+    'AddVector': 'vecADD',
+    'AndBool': 'AND',
+    'AndInt': None,
+    'AngleBetweenVectors': 'angBTWN',
+    'Asin': 'ASIN',
+    'Atan': 'ATAN',
+    'Atan2': 'ATAN2INPUT',
+    'Average': 'AVG',
+    'AverageAngle': 'angAVG',
+    'AverageInt': 'intAVG',
+    'AverageMatrix': 'mtxAVG',
+    'AverageQuaternion': 'quatAVG',
+    'AverageRotation': 'rotAVG',
+    'AverageVector': 'vecAVG',
+    'AxisFromMatrix': None,
+    'Ceil': 'CEIL',
+    'CeilAngle': 'angCEIL',
+    'Clamp': 'CLMP',
+    'ClampAngle': 'angCLMP',
+    'ClampInt': 'intCLMP',
+    'Compare': None,
+    'CompareAngle': None,
+    'CompareInt': None,
+    'CosAngle': 'COS',
+    'CrossProduct': 'CROSS',
+    'DebugLog': None,
+    'DebugLogAngle': None,
+    'DebugLogInt': None,
+    'DebugLogMatrix': None,
+    'DebugLogQuaternion': None,
+    'DebugLogRotation': None,
+    'DebugLogVector': None,
+    'DistancePoints': None,
+    'DistanceTransforms': None,
+    'Divide': 'DIV',
+    'DivideAngle': 'angDIV',
+    'DivideAngleByInt': 'angXintDIV',
+    'DivideByInt': 'intDIV',
+    'DotProduct': 'DOT',
+    'Floor': 'FLOOR',
+    'FloorAngle': 'angFLOOR',
+    'InverseMatrix': 'mtxINV',
+    'InverseQuaternion': 'quatINV',
+    'InverseRotation': 'rotINV',
+    'Lerp': None,
+    'LerpAngle': None,
+    'LerpMatrix': None,
+    'LerpVector': None,
+    'MatrixFromDirection': 'DIR2MTX',
+    'MatrixFromQuaternion': 'QUAT2MTX',
+    'MatrixFromRotation': 'ROT2MTX',
+    'MatrixFromTRS': 'SRT2MTX',
+    'Max': 'MAX',
+    'MaxAngle': 'angMAX',
+    'MaxAngleElement': 'angMAXinARRAY',
+    'MaxElement': 'MAXinARRAY',
+    'MaxInt': 'intMAX',
+    'MaxIntElement': 'intMAXinARRAY',
+    'Max': 'MIN',
+    'MinAngle': 'angMIN',
+    'MinAngleElement': 'angMINinARRAY',
+    'MinElement': 'MINinARRAY',
+    'MinInt': 'intMIN',
+    'MinIntElement': 'intMINinARRAY',
+    'ModulusInt': 'REMAINDER',
+    'Multiply': 'MULT',
+    'MultiplyAngle': 'angMULT',
+    'MultiplyAngleByInt': 'angXintMULT',
+    'MultiplyByInt': 'fltXintMULT',
+    'MultiplyInt': 'intMULT',
+    'MultiplyMatrix': 'mtxMULT',
+    'MultiplyQuaternion': 'quatMULT',
+    'MultiplyRotation': 'rotMULT',
+    'MultiplyVector': 'vecMULT',
+    'MultiplyVectorByMatrix': 'vecXmtxMULT',
+    'Negate': 'NEG',
+    'NegateAngle': 'angNEG',
+    'NegateInt': 'intNEG',
+    'NegateVector': 'vecNEG',
+    'NormalizeArray': None,
+    'NormalizeVector': None,
+    'NormalizeWeightsArray': None,
+    'NotBool': 'NOT',
+    'OrBool': 'OR',
+    'OrInt': None,
+    'Power': 'POW',
+    'QuaternionFromMatrix': 'MTX2QUAT',
+    'QuaternionFromRotation': 'ROT2QUAT',
+    'Remap': 'RMP',
+    'RemapAngle': 'angRMP',
+    'RemapInt': 'intRMP',
+    'RotationFromMatrix': 'MTX2ROT',
+    'RotationFromQuaternion': 'QUAT2ROT',
+    'Round': 'ROUND',
+    'RoundAngle': 'angROUND',
+    'ScaleFromMatrix': 'MTX2SCALE',
+    'Select': 'SWITCH',
+    'SelectAngle': 'angSWITCH',
+    'SelectAngleArray': 'angArraySWITCH',
+    'SelectArray': 'arraySWITCH',
+    'SelectCurve': 'crvSWITCH',
+    'SelectInt': 'intSWITCH',
+    'SelectIntArray': 'intArraySWITCH',
+    'SelectMatrix': 'mtxSWITCH',
+    'SelectMatrixArray': 'mtxArraySWITCH',
+    'SelectMesh': 'meshSWITCH',
+    'SelectQuaternion': 'quatSWITCH',
+    'SelectRotation': 'rotSWITCH',
+    'SelectSurface': 'surfSWITCH',
+    'SelectVector': 'vecSWITCH',
+    'SelectVectorArray': 'vecArraySWITCH',
+    'SinAngle': 'SIN',
+    'SlerpQuaternion': None,
+    'Smoothstep': None,
+    'SquareRoot': 'SQRT',
+    'Subtract': 'SUBTRACT',
+    'SubtractAngle': 'angSUBTRACT',
+    'SubtractInt': 'intSUBTRACT',
+    'SubtractVector': 'vecSUBTRACT',
+    'Sum': 'SUM',
+    'SumAngle': 'angSUM',
+    'SumInt': 'intSUM',
+    'SumVector': 'vecSUM',
+    'TanAngle': 'TAN',
+    'TranslationFromMatrix': 'MTX2POS',
+    'TwistFromMatrix': 'MTX2TWIST',
+    'TwistFromRotation': 'ROT2TWIST',
+    'VectorLength': 'VECLEN',
+    'VectorLengthSquared': 'VECLENSQ',
+    'WeightedAverage': None,
+    'WeightedAverageAngle': None,
+    'WeightedAverageInt': None,
+    'WeightedAverageMatrix': None,
+    'WeightedAverageQuaternion': None,
+    'WeightedAverageRotation': None,
+    'WeightedAverageVector': None,
+    'XorBool': None,
+    'XorInt': None,
 }
 
 node_name_dictionary = {
@@ -114,6 +266,13 @@ node_name_dictionary = {
 }
 
 
+# Use math nodes if loaded
+if cmds.pluginInfo('mayaMathNodes', query=True, loaded=True):
+    math_node_prefix = 'math_'
+    math_node_namespace = 'MMM'
+    plugin_node_name_dictionary.update(math_node_dictionary)
+
+
 def create_node(node_key, name=None):
     """
     All useful rigging nodes compacted into one function.  Works the same as
@@ -140,6 +299,33 @@ def create_node(node_key, name=None):
 
     node_name = cmds.rename(node,
                             '%s_%s' % (name, node_name_dictionary[node_key]))
+    return node_name
+
+
+# Long-term future goal:
+# convert to create_custom_node when more than one plug-in added to personal library
+def create_plugin_node(plugin_node_key, name=None):
+    try:
+        node = cmds.createNode(math_node_prefix + plugin_node_key)
+    except:  # check exception type
+        raise TypeError('Incorrect nodeType: mayaMathNode({}) !'.format(plugin_node_key))
+
+    if not cmds.namespace(exists=math_node_namespace):
+        cmds.namespace(add=math_node_namespace)
+
+    if not name:
+        if cmds.ls(selection=True):
+            name = cmds.ls(selection=True)[0]
+        else:
+            name = cmds.objectType(node).strip(math_node_prefix)
+
+    math_node_suffix = plugin_node_name_dictionary[plugin_node_key] or plugin_node_key.upper()
+
+    node_name = cmds.rename(node,
+                            '{plugin}:{name}_{suffix}'.format(
+                                plugin=math_node_namespace,
+                                name=name,
+                                suffix=math_node_suffix))
     return node_name
 
 
@@ -212,23 +398,36 @@ class NodeWidget(QtWidgets.QFrame):
                                   QtWidgets.QSizePolicy.Fixed)
         self.layout().addWidget(node_widget)
 
+        # Regular node layouts
         name_layout = QtWidgets.QHBoxLayout()
         type_layout = QtWidgets.QHBoxLayout()
         button_layout = QtWidgets.QHBoxLayout()
-        # Add a small splitter
+        # Duplicate node layouts
         find_layout = QtWidgets.QHBoxLayout()
         replace_layout = QtWidgets.QHBoxLayout()
         dup_button_layout = QtWidgets.QHBoxLayout()
+        # Plugin node layouts
+        plugin_name_layout = QtWidgets.QHBoxLayout()
+        plugin_type_layout = QtWidgets.QHBoxLayout()
+        plugin_button_layout = QtWidgets.QHBoxLayout()
 
         node_widget.layout().addLayout(name_layout)
         node_widget.layout().addLayout(type_layout)
         node_widget.layout().addLayout(button_layout)
-        # add small splitter
+
         node_widget.layout().addLayout(Splitter.SplitterLayout())
+
         node_widget.layout().addLayout(find_layout)
         node_widget.layout().addLayout(replace_layout)
         node_widget.layout().addLayout(dup_button_layout)
 
+        node_widget.layout().addLayout(Splitter.SplitterLayout())
+
+        node_widget.layout().addLayout(plugin_name_layout)
+        node_widget.layout().addLayout(plugin_type_layout)
+        node_widget.layout().addLayout(plugin_button_layout)
+
+        # Create Nodes widgets --------------------------------------------- #
         node_label = QtWidgets.QLabel('Node Name:')
         self.input_node_name = QtWidgets.QLineEdit()
         self.input_node_name.setPlaceholderText('prefix_nodeName')  # Grey text
@@ -257,7 +456,7 @@ class NodeWidget(QtWidgets.QFrame):
         button_layout.addWidget(self.node_display_example)
         button_layout.addWidget(create_node_button)
 
-        # Duplicate Node Network widgets
+        # Duplicate Node Network widgets ------------------------------------ #
         find_label = QtWidgets.QLabel('Find:')
         self.find_name = QtWidgets.QLineEdit()
         self.find_name.setPlaceholderText('L_')  # Grey text
@@ -265,7 +464,7 @@ class NodeWidget(QtWidgets.QFrame):
         find_layout.addWidget(find_label)
         find_layout.addWidget(self.find_name)
 
-        # Duplicate Node Network widgets -----------
+        # Duplicate Node Network widgets ------------------------------------ #
         replace_label = QtWidgets.QLabel('Replace:')
         self.replace_name = QtWidgets.QLineEdit()
         self.replace_name.setPlaceholderText('R_')  # Grey text
@@ -276,13 +475,42 @@ class NodeWidget(QtWidgets.QFrame):
         duplicate_network_button = QtWidgets.QPushButton('Duplicate Node Network')
         dup_button_layout.addWidget(duplicate_network_button)
 
-        # ------------------------------------------
+        # Create Plugin Node widgets ---------------------------------------- #
+        plugin_node_label = QtWidgets.QLabel('Custom Node Name:')
+        self.input_plugin_node_name = QtWidgets.QLineEdit()
+        self.input_plugin_node_name.setPlaceholderText('prefix_nodeName')  # Grey text
+
+        plugin_text_validator = QtGui.QRegExpValidator(reg_ex, self.input_plugin_node_name)
+        self.input_plugin_node_name.setValidator(plugin_text_validator)
+
+        plugin_name_layout.addWidget(plugin_node_label)
+        plugin_name_layout.addWidget(self.input_plugin_node_name)
+
+        plugin_node_type_label = QtWidgets.QLabel('Plugin Node Type:')
+        self.plugin_node_type_combo = QtWidgets.QComboBox()
+        # Adding combo box items for node options
+        for node in sorted(plugin_node_name_dictionary.keys()):
+            self.plugin_node_type_combo.addItem(node)
+        plugin_type_layout.addWidget(plugin_node_type_label)
+        plugin_type_layout.addWidget(self.plugin_node_type_combo)
+
+        # Show Node name example
+        self.plugin_node_display_example = QtWidgets.QLabel('')
+
+        create_plugin_node_button = QtWidgets.QPushButton('Create Node')
+
+        plugin_button_layout.addWidget(self.plugin_node_display_example)
+        plugin_button_layout.addWidget(create_plugin_node_button)
+
+        # ------------------------------------------------------------------- #
 
         self.node_type_combo.currentIndexChanged.connect(self._update_node_name)
         self.input_node_name.textChanged.connect(self._update_node_name)
+        self.input_plugin_node_name.textChanged.connect(self._update_plugin_node_name)
 
         create_node_button.clicked.connect(self._get_node_settings)
         duplicate_network_button.clicked.connect(self._duplicate_node_network)
+        create_plugin_node_button.clicked.connect(self._get_plugin_node_settings)
 
         self._update_node_name()
 
@@ -293,6 +521,14 @@ class NodeWidget(QtWidgets.QFrame):
             node_name = self.node_type_combo.currentText()
 
         create_node(node_key=node_key, name=node_name)
+
+    def _get_plugin_node_settings(self):
+        node_key = self.plugin_node_type_combo.currentText()
+        node_name = str(self.input_plugin_node_name.text()).strip()
+        if not node_name:
+            node_name = self.plugin_node_type_combo.currentText()
+
+        create_plugin_node(plugin_node_key=node_key, name=node_name)
 
     def _update_node_name(self):
         input_text = str(self.input_node_name.text()).strip()
@@ -306,6 +542,24 @@ class NodeWidget(QtWidgets.QFrame):
 
         self.node_display_example.setText(
             '<font color=#646464>e.g. %s_%s</font>' % (input_text, node_text))
+
+    def _update_plugin_node_name(self):
+        input_text = str(self.input_plugin_node_name.text()).strip()
+
+        plugin_node_key = self.plugin_node_type_combo.currentText()
+        plugin_node_text = plugin_node_name_dictionary[plugin_node_key]
+
+        if not input_text:
+            self.plugin_node_display_example.setText('<font color=#646464>e.g.</font>')
+            return
+
+        self.plugin_node_display_example.setText(
+            '<font color=#646464>e.g. {plugin}:{name}_{nodeType}</font>'.format(
+                plugin=math_node_namespace,  # change to plugin at later date
+                name=input_text,
+                nodeType=plugin_node_text
+            )
+        )
 
     def _duplicate_node_network(self):
         find_text = str(self.find_name.text()).strip()
