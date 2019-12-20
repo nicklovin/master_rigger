@@ -1,85 +1,210 @@
+from collections import OrderedDict
+
 import maya.cmds as cmds
+from PySide2 import QtWidgets, QtCore, QtGui
 
+from maya_tools.widgets import mayaFrameWidget
+from master_rigger import attributeManipulation as at
 from master_rigger import curve_assignment as crv
-from master_rigger import createNodeLibrary as node
+from master_rigger import createNodeLibrary as n
+from master_rigger import cmdsTranslator as nUtils
+from master_rigger import basicTools as tool
+
+reload(crv)
+reload(n)
+reload(nUtils)
+reload(tool)
+reload(mayaFrameWidget)
 
 
-def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v):
-    a = 0
-    attr_type = [tx, ty, tz, rx, ry, rz, sx, sy, sz, v]
-    for attr in ['.tx', '.ty', '.tz', '.rx', '.ry', '.rz', '.sx', '.sy', '.sz', '.v']:
-        if attr_type[a] == 1:
-            cmds.setAttr(attr, lock=False, keyable=True)
-        else:
-            cmds.setAttr(attr, lock=True, keyable=False)
-        a = a + 1
+def construct_hierarchy_dict():
+    hierarchy_dict = OrderedDict()
+    hierarchy_dict['GLOBAL_MOVE'] = {
+        'IK': None,
+        'CTL': None,
+        'JNT': {
+            'BONE': None,
+            'DRIVER': None
+        }
+    }
+    hierarchy_dict['GEO'] = {
+        'EXTRAS': None,
+        'ANIM_PROXY': None,
+        'RENDER': None
+    }
+    hierarchy_dict['MISC_NODES'] = {
+        'NODES_TO_SHOW': None,
+        'NODES_TO_HIDE': None,
+        'DELETE_BEFORE_PUBLISH': None
+    }
+    hierarchy_dict['PLACEMENT'] = {
+        'Global_CTL': {
+            'Local_CTL': None
+        }
+    }
+    hierarchy_dict['SCRIPT_NODES'] = None
+    hierarchy_dict['DEFORMER'] = {
+        'BLENDSHAPES': {
+            'RIBBONS': None,
+            'LIVE_SHAPES': None,
+            'SHAPES_TO_DELETE': None
+        },
+        'NONSCALE_JNTS': None,
+        'CUSTOM_SYSTEMS': None,
+        'DEFORMER_HANDLE': None
+    }
+    return hierarchy_dict
 
 
-def simple_rig_setup(rig_name):  # input as needed
-    ctrl_setup_names = ['Global', 'Local']
-    hierarchy_names = ['GLOBAL_MOVE', 'IK', 'CTRL', 'JNT', 'BONE', 'DRIVER',
-                       'GEO', 'PROXY', 'RENDER', 'SPACE', 'MISC_NODES',
-                       'PLACEMENT', 'SCRIPT_NODES', 'DEFORMER',
-                       'DEFORMER_HANDLE', 'NONSCALE_JNTS', 'BLENDSHAPES']
-    group_names = []
+def simple_rig_setup(rig_name):
+    hierarchy_dict = construct_hierarchy_dict()
 
-    local_master = cmds.circle(n=ctrl_setup_names[1] + '_CTRL', ch=False,
-                               nr=[0, 1, 0], r=3)
-    crv.set_control_color('yellow', input_object=local_master)
-    global_master = cmds.group(em=True, n=ctrl_setup_names[0] + '_CTRL')
-    crv.add_curve_shape('quad_arrow', transform_node=global_master, color='yellow')
-    rig = cmds.group(em=True, n=rig_name)
+    root_node = nUtils.create_transform(name=rig_name)
+    base_children = []
+    sub_one_children = []
+    sub_two_children = []
+    for base, sub_one in hierarchy_dict.iteritems():
+        base_node = tool.create_null(name=base, suffix='GRP')
+        if sub_one:
+            sub_one_children = []
+            for one, sub_two in sub_one.iteritems():
+                sub_one_node = tool.create_null(name=one, suffix='GRP')
+                if sub_two:
+                    sub_two_children = []
+                    for two, sub_three in sub_two.iteritems():
+                        sub_two_node = tool.create_null(name=two, suffix='GRP')
+                        sub_two_children.append(sub_two_node)
+                    cmds.parent(sub_two_children, sub_one_node)
+                sub_one_children.append(sub_one_node)
+            cmds.parent(sub_one_children, base_node)
+        base_children.append(base_node)
+    cmds.parent(base_children, root_node)
 
-    for g in hierarchy_names:
-        grp = cmds.group(em=True, n=g + '_GRP')
-        group_names.append(grp)
-        cmds.parent(grp, rig)
+    cmds.rename('Local_CTL_GRP', 'Local_CTL')
+    cmds.rename('Global_CTL_GRP', 'Global_CTL')
 
-    # global move grp
-    cmds.parent(group_names[1], group_names[2], group_names[3], group_names[0])
-    # joint type grp
-    cmds.parent(group_names[4], group_names[5], group_names[3])
-    # geo type grp
-    cmds.parent(group_names[7], group_names[8], group_names[6])
-    # spaces under local
-    cmds.parent(group_names[9], local_master)
-    # deformer type grp
-    cmds.parent(group_names[-1], group_names[-2], group_names[-3],
-                group_names[-4])
-    # local under global
-    cmds.parent(local_master, global_master)
-    # global under placement
-    cmds.parent(global_master, group_names[11])
+    crv.add_curve_shape('rounded_square', transform_node='Local_CTL', color='orange')
+    crv.add_curve_shape('master_move', transform_node='Global_CTL', color='yellow')
+
     # connecting global move parts to the matrix of the master controllers
-    global_matrix = node.create_node('DCPM', name='GLOBAL')
-    cmds.connectAttr(local_master[0] + '.worldMatrix[0]',
+    global_matrix = n.create_node('DCPM', name='GLOBAL')
+    cmds.connectAttr('Local_CTL.worldMatrix',
                      global_matrix + '.inputMatrix')
     cmds.connectAttr(global_matrix + '.outputTranslate',
-                     group_names[0] + '.translate')
-    cmds.connectAttr(global_matrix + '.outputRotate', group_names[0] + '.rotate')
-    cmds.connectAttr(global_matrix + '.outputScale', group_names[0] + '.scale')
+                     'GLOBAL_MOVE_GRP.translate')
+    cmds.connectAttr(global_matrix + '.outputRotate', 'GLOBAL_MOVE_GRP.rotate')
+    cmds.connectAttr(global_matrix + '.outputScale', 'GLOBAL_MOVE_GRP.scale')
     # set geo grp to reference by default
-    cmds.setAttr(group_names[6] + '.overrideEnabled', 1)
-    cmds.setAttr(group_names[6] + '.overrideDisplayType', 2)
+    cmds.setAttr('GEO_GRP.overrideEnabled', 1)
+    cmds.setAttr('GEO_GRP.overrideDisplayType', 2)
 
     # add attrs to global and local + set connections
-    cmds.addAttr(local_master, ln='localScale', at='double', dv=1)
-    cmds.setAttr(local_master[0] + '.localScale', keyable=True)
-    for s in ['X', 'Y', 'Z']:
-        cmds.connectAttr(local_master[0] + '.localScale',
-                         local_master[0] + '.scale' + s)
-    cmds.select(local_master[0])
-    lock_hide(1, 1, 1, 1, 1, 1, 0, 0, 0, 0)
+    at.create_attr(
+        attribute_name='localScale',
+        attribute_type='double',
+        input_object='Local_CTL',
+        default_value=1,
+        min_value=0.01)
+    at.create_attr(
+        attribute_name='globalScale',
+        attribute_type='double',
+        input_object='Global_CTL',
+        default_value=1,
+        min_value=0.01)
+    at.create_attr(
+        attribute_name='GEO',
+        attribute_type='enum',
+        input_object='Global_CTL',
+        enum_names=['-------'],
+        keyable=False,
+        channelbox=True)
+    at.create_attr(
+        attribute_name='geoSelectable',
+        attribute_type='enum',
+        input_object='Global_CTL',
+        enum_names=['Normal', 'Template', 'Reference'],
+        keyable=False,
+        channelbox=True)
+    at.create_attr(
+        attribute_name='geoVis',
+        attribute_type='enum',
+        input_object='Global_CTL',
+        enum_names=['Proxy', 'Render'],
+        keyable=False,
+        channelbox=True)
 
-    cmds.addAttr(global_master, ln='globalScale', at='double', dv=1)
-    cmds.addAttr(global_master, ln='_', nn=' ', at='enum', en='GEO:')
-    cmds.addAttr(global_master, ln='geoVis', at='enum', en='Proxy:Render:', dv=1)
-    cmds.setAttr(global_master + '.globalScale', keyable=True)
-    cmds.setAttr(global_master + '._', keyable=False, lock=True, cb=True)
-    cmds.setAttr(global_master + '.geoVis', keyable=False, cb=True)
+    # Geo Selectable connections
+    cmds.connectAttr('Global_CTL.geoSelectable', 'GEO_GRP.overrideDisplayType')
+
+    # Geo Vis connections
+    revVis = n.create_node('REV', name='Global_geoVis')
+    cmds.connectAttr('Global_CTL.geoVis', 'RENDER_GRP.visibility')
+    cmds.connectAttr('Global_CTL.geoVis', revVis + '.inputX')
+    cmds.connectAttr(revVis + '.outputX', 'ANIM_PROXY_GRP.visibility')
+
     for s in ['X', 'Y', 'Z']:
-        cmds.connectAttr(global_master + '.globalScale',
-                         global_master + '.scale' + s)
-    cmds.select(global_master)
-    lock_hide(1, 1, 1, 1, 1, 1, 0, 0, 0, 0)
-    return global_master, local_master
+        cmds.connectAttr('Local_CTL' + '.localScale',
+                         'Local_CTL' + '.scale' + s)
+        cmds.connectAttr('Global_CTL' + '.globalScale',
+                         'Global_CTL' + '.scale' + s)
+
+    at.lock_attrs(
+        nodes=['Local_CTL', 'Global_CTL'],
+        attrs=['sx', 'sy', 'sz', 'v'],
+        hide=True)
+
+    # TODO: What is this returning for?
+    return 'Global_CTL', 'Local_CTL'
+
+
+class CreateRigWidget(mayaFrameWidget.MayaFrameWidget):
+
+    def __init__(self):
+        QtWidgets.QFrame.__init__(self)
+
+        # self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(1, 1, 1, 1)
+        self.layout().setSpacing(0)
+        self.layout().setAlignment(QtCore.Qt.AlignTop)
+
+        create_rig_widget = QtWidgets.QWidget()
+        create_rig_widget.setLayout(QtWidgets.QVBoxLayout())
+        create_rig_widget.layout().setContentsMargins(2, 2, 2, 2)
+        create_rig_widget.layout().setSpacing(5)
+        create_rig_widget.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                        QtWidgets.QSizePolicy.Fixed)
+        self.layout().addWidget(create_rig_widget)
+
+        name_layout = QtWidgets.QHBoxLayout()
+        button_layout = QtWidgets.QHBoxLayout()
+
+        create_rig_widget.layout().addLayout(name_layout)
+        create_rig_widget.layout().addLayout(button_layout)
+
+        # Input Name ----------------------------------------------- #
+        name_label = QtWidgets.QLabel('Rig Name:')
+        self.name_line_edit = QtWidgets.QLineEdit()
+
+        reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_0-9]+')
+        text_validator = QtGui.QRegExpValidator(reg_ex,
+                                                self.name_line_edit)
+        self.name_line_edit.setValidator(text_validator)
+
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(self.name_line_edit)
+
+        # Buttons -------------------------------------------------- #
+        self.create_rig_button = QtWidgets.QPushButton('Create Rig')
+        button_layout.addWidget(self.create_rig_button)
+
+        # Connections ---------------------------------------------- #
+        self.create_rig_button.clicked.connect(self.create_rig)
+
+    def create_rig(self):
+        name = str(self.name_line_edit.text()).strip()
+        if not name:
+            return self.popUpError(ValueError('Invalid input for Rig Name!'))
+
+        simple_rig_setup(name)
