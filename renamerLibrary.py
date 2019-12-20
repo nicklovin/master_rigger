@@ -387,7 +387,7 @@ class NamingWidget(QtWidgets.QFrame):
         rename_text_label = QtWidgets.QLabel('Rename: ')
         self.rename_line_edit = QtWidgets.QLineEdit()
         self.rename_line_edit.setPlaceholderText(
-            'C_objectName_##_CTRL')  # Grey text
+            'Component_Side_objectName_##_CTL')  # Grey text
         rename_text_layout.addWidget(rename_text_label)
         rename_text_layout.addWidget(self.rename_line_edit)
 
