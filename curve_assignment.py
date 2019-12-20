@@ -1,21 +1,12 @@
 import maya.cmds as cmds
-from pprint import pprint
+# from pprint import pprint
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 from master_rigger import Splitter
 from master_rigger import basicTools as tool  # If possible, remove this
+from master_rigger.data import curve_data
 reload(tool)
-
-
-def control_sphere(*arg):
-    circle_1 = cmds.circle(nr=[0, 1, 0], r=1, d=3, ch=0)
-    circle_2 = cmds.circle(nr=[1, 0, 0], r=1, d=3, ch=0)
-    circle_3 = cmds.circle(nr=[0, 0, 1], r=1, d=3, ch=0)
-
-    cmds.parent(cmds.listRelatives(circle_2, circle_3, shapes=True), circle_1,
-                s=True, r=True)
-    cmds.delete(circle_2, circle_3)
-    return circle_1
+reload(curve_data)
 
 
 curve_library = {
@@ -27,10 +18,10 @@ curve_library = {
                       constructionHistory=False),
     'square': partial(cmds.curve,
                       degree=1,
-                      point=[(-1, 0, -1), (1, 0, -1), (1, 0, 1), (-1, 0, 1)]),
+                      point=curve_data.CURVE_POINTS['square']),
     'triangle': partial(cmds.curve,
                         degree=1,
-                        point=[(-1, 0, 1), (0, 0, -1), (1, 0, 1)]),
+                        point=curve_data.CURVE_POINTS['triangle']),
     'octagon': partial(cmds.circle,
                        normal=[0, 1, 0],
                        radius=1,
@@ -39,135 +30,41 @@ curve_library = {
                        constructionHistory=False),
     'box': partial(cmds.curve,
                    degree=1,
-                   point=[(0.5, 0.5, 0.5), (-0.5, 0.5, 0.5), (-0.5, 0.5, -0.5),
-                          (0.5, 0.5, -0.5,), (0.5, 0.5, 0.5,), (0.5, -0.5, 0.5,),
-                          (0.5, -0.5, -0.5,), (0.5, 0.5, -0.5,),
-                          (-0.5, 0.5, -0.5,), (-0.5, -0.5, -0.5,),
-                          (-0.5, -0.5, 0.5,), (-0.5, 0.5, 0.5,),
-                          (-0.5, -0.5, 0.5,), (0.5, -0.5, 0.5,),
-                          (0.5, -0.5, -0.5,), (-0.5, -0.5, -0.5,)]),
-    'sphere': control_sphere,
+                   point=curve_data.CURVE_POINTS['box']),
+    'sphere': curve_data.control_sphere,
     'pyramid': partial(cmds.curve,
                        degree=1,
-                       point=[(9.27258e-008, -0.353553, -0.707107), (-0.707107,
-                              -0.353553, -6.18172e-008), (0, 0.353553, 0),
-                              (9.27258e-008, -0.353553, -0.707107), (0.707107,
-                              -0.353553, 0), (0, 0.353553, 0), (-3.09086e-008,
-                              -0.353553, 0.707107), (0.707107, -0.353553, 0),
-                              (-3.09086e-008, -0.353553, 0.707107), (-0.707107,
-                              -0.353553, -6.18172e-008)]),
+                       point=curve_data.CURVE_POINTS['pyramid']),
     'diamond': partial(cmds.curve,
                        degree=1,
-                       point=[(0, 1, 0), (1, 0, 0), (0, 0, 1), (0, 1, 0),
-                              (0, 0, -1), (-1, 0, 0), (0, 1, 0), (0, 0, 1),
-                              (-1, 0, 0), (0, -1, 0), (0, 0, 1), (1, 0, 0),
-                              (0, -1, 0), (0, 0, -1), (1, 0, 0)]),
+                       point=curve_data.CURVE_POINTS['diamond']),
     'quad_arrow': partial(cmds.curve,
                           degree=1,
-                          p=[(0.4, 0.0, -0.4), (0.4, 0.0, -0.6),
-                              (0.4, 0.0, -0.8), (0.4, 0.0, -1.0),
-                              (0.4, 0.0, -1.2), (0.8, 0.0, -1.2),
-                              (0.6, 0.0, -1.4), (0.4, 0.0, -1.6),
-                              (0.2, 0.0, -1.8), (0.0, 0.0, -2.0),
-                              (-0.2, 0.0, -1.8), (-0.4, 0.0, -1.6),
-                              (-0.6, 0.0, -1.4), (-0.8, 0.0, -1.2),
-                              (-0.4, 0.0, -1.2), (-0.4, 0.0, -1.0),
-                              (-0.4, 0.0, -0.8), (-0.4, 0.0, -0.6),
-                              (-0.4, 0.0, -0.4), (-0.6, 0.0, -0.4),
-                              (-0.8, 0.0, -0.4), (-1.0, 0.0, -0.4),
-                              (-1.2, 0.0, -0.4), (-1.2, 0.0, -0.6),
-                              (-1.2, 0.0, -0.8), (-1.4, 0.0, -0.6),
-                              (-1.6, 0.0, -0.4), (-1.8, 0.0, -0.2),
-                              (-2.0, 0.0, 0.0),
-                              (-1.8, 0.0, 0.2), (-1.6, 0.0, 0.4),
-                              (-1.4, 0.0, 0.6), (-1.2, 0.0, 0.8),
-                              (-1.2, 0.0, 0.4), (-1.0, 0.0, 0.4),
-                              (-0.8, 0.0, 0.4), (-0.6, 0.0, 0.4),
-                              (-0.4, 0.0, 0.4), (-0.4, 0.0, 0.6),
-                              (-0.4, 0.0, 0.8), (-0.4, 0.0, 1.0),
-                              (-0.4, 0.0, 1.2), (-0.8, 0.0, 1.2),
-                              (-0.6, 0.0, 1.4), (-0.4, 0.0, 1.6),
-                              (-0.2, 0.0, 1.8), (0.0, 0.0, 2.0),
-                              (0.2, 0.0, 1.8), (0.4, 0.0, 1.6),
-                              (0.6, 0.0, 1.4), (0.8, 0.0, 1.2), (0.4, 0.0, 1.2),
-                              (0.4, 0.0, 1.0), (0.4, 0.0, 0.8), (0.4, 0.0, 0.6),
-                              (0.4, 0.0, 0.4), (0.6, 0.0, 0.4), (0.8, 0.0, 0.4),
-                              (1.0, 0.0, 0.4), (1.2, 0.0, 0.4), (1.2, 0.0, 0.8),
-                              (1.4, 0.0, 0.6), (1.6, 0.0, 0.4), (1.8, 0.0, 0.2),
-                              (2.0, 0.0, 0.0),
-                              (1.8, 0.0, -0.2), (1.6, 0.0, -0.4),
-                              (1.4, 0.0, -0.6), (1.2, 0.0, -0.8),
-                              (1.2, 0.0, -0.6), (1.2, 0.0, -0.4),
-                              (1.0, 0.0, -0.4), (0.8, 0.0, -0.4),
-                              (0.6, 0.0, -0.4)]),
+                          p=curve_data.CURVE_POINTS['quad_arrow']),
+
+    'master_move': partial(cmds.curve,
+                           degree=1,
+                           p=curve_data.CURVE_POINTS['master_move']),
 
     'arrow': partial(cmds.curve,
                      degree=1,
-                     p=[(0, 0, 0), (2, 0, 2), (1, 0, 2), (1, 0, 3), (1, 0, 4),
-                        (1, 0, 5), (1, 0, 6), (1, 0, 7), (1, 0, 8), (0, 0, 8),
-                        (-1, 0, 8), (-1, 0, 7), (-1, 0, 6), (-1, 0, 5),
-                        (-1, 0, 4), (-1, 0, 3), (-1, 0, 2), (-2, 0, 2)]),
+                     p=curve_data.CURVE_POINTS['arrow']),
     'plus': partial(cmds.curve,
                     degree=1,
-                    p=[(-1, 0, -1), (-1, 0, -3), (1, 0, -3), (1, 0, -1),
-                       (3, 0, -1), (3, 0, 1), (1, 0, 1), (1, 0, 3),
-                       (-1, 0, 3), (-1, 0, 1), (-3, 0, 1), (-3, 0, -1)]),
+                    p=curve_data.CURVE_POINTS['plus']),
     'ring': partial(cmds.curve,
                     d=1,
-                    p=[(0.707107, 0.1, 0.707107), (1, 0.1, 0), (1, -0.1, 0),
-                       (0.707107, -0.1, -0.707107), (0.707107, 0.1,
-                       -0.707107), (0, 0.1, -1), (0, -0.1, -1), (-0.707107,
-                       -0.1, -0.707107), (-0.707107, 0.1, -0.707107), (-1,
-                       0.1, 0), (-1, -0.1, 0), (-0.707107, -0.1, 0.707107),
-                       (-0.707107, 0.1, 0.707107), (0, 0.1, 1), (0, -0.1, 1),
-                       (0.707107, -0.1, 0.707107), (0.707107, 0.1, 0.707107),
-                       (0, 0.1, 1), (0, -0.1, 1), (-0.707107, -0.1,
-                       0.707107), (-0.707107, 0.1, 0.707107), (-1, 0.1, 0),
-                       (-1, -0.1, 0), (-0.707107, -0.1, -0.707107),
-                       (-0.707107, 0.1, -0.707107), (0, 0.1, -1), (0, -0.1,
-                       -1), (0.707107, -0.1, -0.707107), (0.707107, 0.1,
-                       -0.707107), (1, 0.1, 0), (1, -0.1, 0), (0.707107,
-                       -0.1, 0.707107)]),
+                    p=curve_data.CURVE_POINTS['ring']),
     'double_arrow': partial(cmds.curve,
                             d=1,
-                            p=[(1, 0, 0), (1, 0, -1), (1, 0, -2), (1, 0, -3),
-                               (2, 0, -3), (1, 0, -4), (0, 0, -5), (-1, 0, -4),
-                               (-2, 0, -3), (-1, 0, -3), (-1, 0, -2), (-1, 0, -1),
-                               (-1, 0, 0), (-1, 0, 1), (-1, 0, 2), (-1, 0, 3),
-                               (-2, 0, 3), (-1, 0, 4), (0, 0, 5), (1, 0, 4),
-                               (2, 0, 3), (1, 0, 3), (1, 0, 2), (1, 0, 1)]),
+                            p=curve_data.CURVE_POINTS['double_arrow']),
     'half_circle': partial(cmds.curve,
                            d=3,
-                           p=[(7.199780051661553e-19, 6.123233995736767e-17, -0.9999999999999999),
-                              (-0.10447515585510377, 6.123233995736767e-17, -0.9999999999999999),
-                              (-0.3132852867940712, 5.899899835693993e-17, -0.9635267637659666),
-                              (-0.5943487937195443, 5.011026650192372e-17, -0.8183627562953246),
-                              (-0.8231292854416953, 3.662258371768934e-17, -0.5980921804260191),
-                              (-0.9658174718568318, 1.9206515277889067e-17, -0.3136661981440106),
-                              (-1.0107957168152208, 3.159126961902688e-32, -3.0373923862181407e-16),
-                              (-0.9658174718568332, -1.9206515277889046e-17, 0.3136661981440098),
-                              (-0.8231292854416946, -3.662258371768931e-17, 0.598092180426019),
-                              (-0.5943487937195449, -5.01102665019237e-17, 0.8183627562953251),
-                              (-0.31328528679407086, -5.899899835693988e-17, 0.9635267637659651),
-                              (-0.10447515585510486, -6.123233995736766e-17, 1.0),
-                              (-4.718445737074547e-16, -6.123233995736766e-17, 1.0)]),
+                           p=curve_data.CURVE_POINTS['half_circle']),
     'tesseract': partial(cmds.curve,
                          d=1,
-                         p=[(0.866025, 0.866025, 0.866025), (-0.866025, 0.866025, 0.866025),
-                            (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5), (0.866025, 0.866025, 0.866025),
-                            (0.866025, -0.866025, 0.866025), (0.5, -0.5, 0.5), (0.5, 0.5, 0.5),
-                            (0.5, 0.5, -0.5), (0.866025, 0.866025, -0.866025), (0.866025, 0.866025, 0.866025),
-                            (0.866025, -0.866025, 0.866025), (0.866025, -0.866025, -0.866025),
-                            (0.866025, 0.866025, -0.866025), (0.5, 0.5, -0.5), (0.5, -0.5, -0.5),
-                            (0.866025, -0.866025, -0.866025), (-0.866025, -0.866025, -0.866025),
-                            (-0.866025, 0.866025, -0.866025), (-0.5, 0.5, -0.5), (-0.5, -0.5, -0.5),
-                            (-0.866025, -0.866025, -0.866025), (-0.866025, -0.866025, 0.866025),
-                            (-0.866025, 0.866025, 0.866025), (-0.5, 0.5, 0.5), (-0.5, -0.5, 0.5),
-                            (-0.866025, -0.866025, 0.866025), (0.866025, -0.866025, 0.866025), (0.5, -0.5, 0.5),
-                            (0.5, -0.5, -0.5), (-0.5, -0.5, -0.5), (-0.5, -0.5, 0.5), (0.5, -0.5, 0.5),
-                            (0.5, 0.5, 0.5), (-0.5, 0.5, 0.5), (-0.5, 0.5, -0.5), (0.5, 0.5, -0.5),
-                            (0.866025, 0.866025, -0.866025), (-0.866025, 0.866025, -0.866025),
-                            (-0.866025, 0.866025, 0.866025)])
+                         p=curve_data.CURVE_POINTS['tesseract']),
+    'rounded_square': curve_data.rounded_square,
 }
 
 curve_library_bool = {
@@ -185,7 +82,9 @@ curve_library_bool = {
     'ring': True,
     'double_arrow': True,
     'half_circle': False,
-    'tesseract': False
+    'tesseract': False,
+    'rounded_square': False,
+    'master_move': True,
 }
 
 rgb_dictionary = {
@@ -200,20 +99,6 @@ rgb_dictionary = {
     'purple': [1, 0, 1],
     'white': [1, 1, 1],
     'grey': [.6, .6, .6]
-}
-# Index colors are blown out by comparison, so these values are more correct
-rgb_actuals = {
-    'red': [8.509607315063477, -0.010916219092905521, -0.010916219092905521],
-    'pink': [8.509607315063477, 0.5029946565628052, 0.5029946565628052],
-    'orange': [1.270400047302246, 0.33289995789527893, -0.010800041258335114],
-    'yellow': [8.509607315063477, 8.509607315063477, -0.010916219092905521],
-    'green': [-0.010916219092905521, 8.509607315063477, -0.010916219092905521],
-    'cyan': [0.14030349254608154, 1.1826233863830566, 8.509607315063477],
-    'blue': [-0.010916219092905521, -0.010916219092905521, 8.509607315063477],
-    'magenta': [0.770842432975769, -0.010916443541646004, 0.770842432975769],
-    'purple': [0.770842432975769, -0.010916443541646004, 0.770842432975769],
-    'white': [8.509607315063477, 8.509607315063477, 8.509607315063477],
-    'grey': [.9, .9, .9]
 }
 
 
@@ -250,8 +135,8 @@ def set_control_color(rgb_input, input_object=None):
                             'Input 3 floats between 0 and 1 to assign a color.')
             return
         rgb = rgb_input
-    elif rgb_input in rgb_actuals:
-        rgb = rgb_actuals[rgb_input]
+    elif rgb_input in curve_data.RGB_ACTUALS:
+        rgb = curve_data.RGB_ACTUALS[rgb_input]
     else:
         # This condition will only work when called directly, never when called
         # from the add_curve_shape function
@@ -352,7 +237,7 @@ def add_curve_shape(shape_choice, transform_node=None, color=None,
                 curve_color = [float(c) / 1.5 for c in rgb_dictionary[color]]
                 # Color is a string name used as a key
             else:
-                curve_color = rgb_actuals[color]
+                curve_color = curve_data.RGB_ACTUALS[color]
             set_control_color(rgb_input=curve_color, input_object=curve_shape)
 
         else:
@@ -465,7 +350,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
 
         control_name_label = QtWidgets.QLabel('Control Name:')
         self.control_name_line_edit = QtWidgets.QLineEdit('')
-        self.control_name_line_edit.setPlaceholderText('L_wrist_CTRL')
+        self.control_name_line_edit.setPlaceholderText('Arm_L_wrist_CTRL')
 
         reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_0-9]+')
         text_validator = QtGui.QRegExpValidator(reg_ex,
@@ -602,7 +487,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
             self._force_button_update(color=new_preset_color)
             # Button needs 0-255 values, actuals should be accurate for shape assignment
             self.current_button_color = new_preset_color
-            self.current_assign_color = rgb_actuals[preset_color]
+            self.current_assign_color = curve_data.RGB_ACTUALS[preset_color]
 
     def set_control_color(self):
         nodes = cmds.ls(selection=True)
