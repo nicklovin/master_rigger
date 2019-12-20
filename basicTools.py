@@ -3,11 +3,23 @@ from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 import renamerLibrary as lib
 
+from master_rigger import cmdsTranslator as nUtil
+reload(nUtil)
+
 DEFAULT_PANEL = 'modelPanel4'
 
 
 def create_null(name='null', suffix='NULL'):
     return cmds.createNode('transform', name='{}_{}'.format(name, suffix))
+
+
+def create_pivot(name=None):
+    clst = cmds.cluster()
+    cmds.select(cl=True)
+    jnt = cmds.joint(name=name or 'pivotJoint1')
+    cmds.parentConstraint(clst, jnt, maintainOffset=False)
+    cmds.delete(clst)
+    return jnt
 
 
 # TODO: Reorder parameters
@@ -179,21 +191,20 @@ def match_transformations(translation=True, rotation=True, scale=False,
         cmds.xform(target, scale=scaling)
 
 
-# TODO: Implement into widget
 def offset_joint_hierarchy(joints):
     """
     Offsets a hierarchy of joints with SRT groups, detaching the visible bones
     """
     # Add the new ensureArray function from the os wrapper when added to github
     # Also consider option to just select hierarchy parent to run
-    parent_srt = None
     for jnt in joints:
-        srt = create_offset(suffix='SRT', input_object=jnt)
-        if parent_srt:
+        jnt_parent = nUtil.get_parent(jnt)
+        ofs = create_offset(suffix='OFS', input_object=jnt)
+        create_offset(suffix='SRT', input_object=jnt)
+        if jnt_parent:
             # parent to the above srt offset then clean the hierarchy children order
-            cmds.parent(srt, parent_srt)
-            cmds.reorder(srt, front=True)
-        parent_srt = srt
+            cmds.parent(ofs, jnt_parent + '_SRT')
+            cmds.reorder(ofs, front=True)
 
 
 # TODO: Make nodes required, do selections in widget command calls
@@ -347,9 +358,11 @@ class OffsetNodeWidget(QtWidgets.QFrame):
 
         create_offset_button = QtWidgets.QPushButton('Create Offset')
         create_child_button = QtWidgets.QPushButton('Create Child')
+        create_joint_hierarchy = QtWidgets.QPushButton('Create Joint Offset')
 
         buttons_layout.addWidget(create_offset_button)
         buttons_layout.addWidget(create_child_button)
+        buttons_layout.addWidget(create_joint_hierarchy)
 
         self.override_checkbox = QtWidgets.QCheckBox('Override Suffix')
         self.override_checkbox.setChecked(False)
@@ -364,6 +377,7 @@ class OffsetNodeWidget(QtWidgets.QFrame):
 
         create_offset_button.clicked.connect(self.run_create_offset)
         create_child_button.clicked.connect(self.run_create_child)
+        create_joint_hierarchy.clicked.connect(self.run_offset_joint_hierarchy)
 
         self.override_checkbox.stateChanged.connect(self._update_override_enable)
 
@@ -386,16 +400,24 @@ class OffsetNodeWidget(QtWidgets.QFrame):
     def run_create_offset(self):
         if self.override_checkbox.checkState():
             suffix = self._get_suffix_parameter()
-            create_offset(suffix=suffix)
+            for node in cmds.ls(selection=True):
+                create_offset(suffix=suffix, input_object=node)
         else:
-            create_offset()
+            for node in cmds.ls(selection=True):
+                create_offset(input_object=node)
 
     def run_create_child(self):
         if self.override_checkbox.checkState():
             suffix = self._get_suffix_parameter()
-            create_child(suffix=suffix)
+            for node in cmds.ls(selection=True):
+                create_child(suffix=suffix, input_object=node)
         else:
-            create_child()
+            for node in cmds.ls(selection=True):
+                create_child(input_object=node)
+
+    def run_offset_joint_hierarchy(self):
+        joints = cmds.ls(selection=True)
+        offset_joint_hierarchy(joints)
 
 
 class TransformWidget(QtWidgets.QFrame):
