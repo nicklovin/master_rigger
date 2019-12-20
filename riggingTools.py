@@ -1,7 +1,9 @@
 import maya.cmds as cmds
+import pymel.core as pm
 # from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 from maya_tools.widgets import mayaFrameWidget
+from maya_tools import fileDataIO as fio
 from master_rigger import createNodeLibrary as node
 from master_rigger import curve_assignment as crv
 from master_rigger import basicTools as tool
@@ -12,6 +14,72 @@ reload(crv)
 reload(tool)
 reload(nUtils)
 reload(mayaFrameWidget)
+reload(fio)
+
+
+def export_rig_pose(filepath):
+
+    selection = pm.ls(selection=True)
+
+    poseData = {}
+
+    pos = True
+    rot = True
+    scl = True
+    # mtx = True
+    # worldMtx = True
+
+    for ctrl in selection:
+        ctrlVals = {}
+
+        position = None
+        if pos:
+            position = ctrl.translate.get()
+            position = [position.x, position.y, position.z]
+            ctrlVals['translate'] = position
+
+        rotation = None
+        if rot:
+            rotation = ctrl.rotate.get()
+            rotation = [rotation.x, rotation.y, rotation.z]
+            ctrlVals['rotate'] = rotation
+
+        scale = None
+        if scl:
+            scale = ctrl.scale.get()
+            scale = [scale.x, scale.y, scale.z]
+            ctrlVals['scale'] = scale
+
+        stripNamespace = ctrl.name().rsplit(':', 1)[-1]
+        poseData[stripNamespace] = ctrlVals
+
+    fio.saveToJson(poseData, filepath)
+    return poseData
+
+
+def import_rig_pose(filepath):
+    selection = pm.ls(selection=True)
+
+    data = fio.loadFromJson(filepath)
+
+    pos = True
+    rot = True
+    scl = True
+
+    for ctrl in selection:
+        stripNamespace = ctrl.name().rsplit(':', 1)[-1]
+        ctrlVals = data[stripNamespace]
+
+        if pos:
+            ctrl.setTranslation(ctrlVals['translate'])
+
+        if rot:
+            ctrl.setRotation(ctrlVals['rotate'])
+
+        if scl:
+            ctrl.setScale(ctrlVals['scale'])
+
+    return data
 
 
 def vector_aim_constraint(source, target, up_position, aim_vector='x', up_vector='y'):
@@ -126,13 +194,13 @@ def simple_matrix_constraint(target=None, source=None, position=True,
 
     if not target:
         try:
-            target = nUtils.get_selection_list()[0]
+            target = nUtils.get_selected_nodes()[0]
         except Exception as err:
             raise err
 
     if not source:
         try:
-            source = nUtils.get_selection_list()[1]
+            source = nUtils.get_selected_nodes()[1]
         except Exception as err:
             raise err
 
@@ -154,10 +222,7 @@ def simple_matrix_constraint(target=None, source=None, position=True,
 
 
 # Complete beta, no applicable testing, might be rewritten entirely
-def matrix_constraint(position=True, orientation=True, scale=False):
-
-    source, inverse, target = nUtils.get_selection_list()
-
+def matrix_constraint(source, inverse, target, position=True, orientation=True, scale=False):
     mult_matrix_node = node.create_node(
         node_key='MM',
         name=source)
@@ -419,7 +484,15 @@ class ConstraintWidget(mayaFrameWidget.MayaFrameWidget):
         r = self.rotate_checkbox.checkState()
         s = self.scale_checkbox.checkState()
 
-        matrix_constraint(position=t, orientation=r, scale=s)
+        source, inverse, target = nUtils.get_selected_nodes()
+
+        matrix_constraint(
+            source=source,
+            inverse=inverse,
+            target=target,
+            position=t,
+            orientation=r,
+            scale=s)
 
 
 class VectorWidget(QtWidgets.QFrame):
