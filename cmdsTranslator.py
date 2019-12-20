@@ -1,19 +1,20 @@
 import maya.cmds as cmds
+import pymel.core as pm
 from math import pow, sqrt
 
 
-def get_selection():
+def get_selected_node():
     """
     Returns: The first selected object.
     """
-    return cmds.ls(selection=True)[0]
+    return get_selected_nodes[0]
 
 
-def get_selection_list():
+def get_selected_nodes():
     """
     Returns: List of all selected objects
     """
-    return cmds.ls(selection=True)
+    return pm.ls(selection=True)
 
 
 def get_children(parent):
@@ -32,9 +33,12 @@ def get_all_children(parent):
 
 def get_parent(child):
     """
-    Returns: The parent of an input object
+    Returns: The parent of an input object or None
     """
-    return cmds.listRelatives(child, parent=True)
+    parents = cmds.listRelatives(child, parent=True)
+    if parents:
+        return parents[0]
+    return None
 
 
 # Check if flag is correct and if this does the correct operation
@@ -113,7 +117,7 @@ def get_inverse_world_matrix(obj):
 
 
 def create_transform(name):
-    return cmds.group(empty=True, name=name)
+    return cmds.createNode('transform', name=name)
 
 
 def ensure_list(value):
