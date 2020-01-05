@@ -10,6 +10,7 @@ from master_rigger import createNodeLibrary as n
 from master_rigger import cmdsTranslator as nUtils
 from master_rigger import basicTools as tool
 
+reload(at)
 reload(crv)
 reload(n)
 reload(nUtils)
@@ -96,7 +97,6 @@ def simple_rig_setup(rig_name):
     cmds.connectAttr(global_matrix + '.outputScale', 'GLOBAL_MOVE_GRP.scale')
     # set geo grp to reference by default
     cmds.setAttr('GEO_GRP.overrideEnabled', 1)
-    cmds.setAttr('GEO_GRP.overrideDisplayType', 2)
 
     # add attrs to global and local + set connections
     at.create_attr(
