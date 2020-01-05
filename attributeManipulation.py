@@ -2,40 +2,68 @@ import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
 from master_rigger import Splitter
-# Force commit comment.
+from master_rigger import cmdsTranslator as nUtil
 
-attributes = ['.tx', '.ty', '.tz',
-              '.rx', '.ry', '.rz',
-              '.sx', '.sy', '.sz',
-              '.v']
+attributes = ['tx', 'ty', 'tz',
+              'rx', 'ry', 'rz',
+              'sx', 'sy', 'sz',
+              'v']
+
+defaults = (0, 0, 0,
+            0, 0, 0,
+            1, 1, 1)
 
 
-# TODO: Kwargs?
+def lock_attrs(nodes, attrs, hide=False):
+    """
+    """
+    nodes = nUtil.ensure_list(nodes)
+    attrs = nUtil.ensure_list(attrs)
+    for node in nodes:
+        for attr in attrs:
+            activeAttr = '{}.{}'.format(node, attr)
+            if hide:
+                cmds.setAttr(activeAttr, keyable=False)
+            cmds.setAttr(activeAttr, lock=True)
+
+
+def unlock_attrs(nodes, attrs, show=True):
+    """
+    """
+    nodes = nUtil.ensure_list(nodes)
+    attrs = nUtil.ensure_list(attrs)
+    for node in nodes:
+        for attr in attrs:
+            cmds.setAttr('{}.{}'.format(node, attr), lock=False, keyable=show)
+
+
+# TODO: Deprication in-progress; needlessly complicated and limited
+# Use lock_attrs or unlock_attrs
 def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
               *args):
     """
 
     Args:
         tx (int or bool): Assign status of attribute translateX,
-            1 or True perform action.
+            1 or True locks attribute.
         ty (int or bool): Assign status of attribute translateY,
-            1 or True perform action.
+            1 or True locks attribute.
         tz (int or bool): Assign status of attribute translateZ,
-            1 or True perform action.
+            1 or True locks attribute.
         rx (int or bool): Assign status of attribute rotateX,
-            1 or True perform action.
+            1 or True locks attribute.
         ry (int or bool): Assign status of attribute rotateY,
-            1 or True perform action.
+            1 or True locks attribute.
         rz (int or bool): Assign status of attribute rotateZ,
-            1 or True perform action.
+            1 or True locks attribute.
         sx (int or bool): Assign status of attribute scaleX,
-            1 or True perform action.
+            1 or True locks attribute.
         sy (int or bool): Assign status of attribute scaleY,
-            1 or True perform action.
+            1 or True locks attribute.
         sz (int or bool): Assign status of attribute scaleZ,
-            1 or True perform action.
+            1 or True locks attribute.
         v (int or bool): Assign status of attribute visibility,
-            1 or True perform action.
+            1 or True locks attribute.
         objects (list[str]): Assign object(s) to have attributes affected.
             Only works if selection=False.
         hide (bool): Assign if function should hide the locked attribute.
@@ -43,29 +71,43 @@ def lock_hide(tx, ty, tz, rx, ry, rz, sx, sy, sz, v, objects=[], hide=True,
             Should be entered as '.attribute_name'
 
     """
+    # Redirect method until deprication is in effect
+    objects = nUtil.ensure_list(objects)
     if not objects:
         objects = cmds.ls(selection=True)
+    param_attrs = zip(attributes, [tx, ty, tz, rx, ry, rz, sx, sy, sz, v])
+    attrs_to_lock = [attr[0] for attr in param_attrs if attr[1]]
+    attrs_to_unlock = [attr[0] for attr in param_attrs if not attr[1]]
 
-    # Check if hiding should be done on top of locking
-    if hide:
-        attr_keyable = False
-    else:
-        attr_keyable = True
+    lock_attrs(objects, attrs_to_lock)
+    unlock_attrs(objects, attrs_to_unlock)
+    # Remains in case of reference need, to be removed asap #
+    # for obj in objects:
+    #     attr_type = [tx, ty, tz, rx, ry, rz, sx, sy, sz, v]
+    #     for attr in attributes:
+    #         if attr_type[a] == 0 or False:
+    #             cmds.setAttr(obj + attr, lock=False, keyable=True)
+    #         else:
+    #             cmds.setAttr(obj + attr, lock=True, keyable=hide)
 
-    for obj in objects:
-        a = 0
-        attr_type = [tx, ty, tz, rx, ry, rz, sx, sy, sz, v]
-        for attr in attributes:
-            if attr_type[a] == 0 or False:
-                cmds.setAttr(obj + attr, lock=False, keyable=True)
-            else:
-                cmds.setAttr(obj + attr, lock=True, keyable=attr_keyable)
-            a = a + 1
+    #     # if additional arguments are passed, they are assumed to be locked
+    #     if args:
+    #         for attr in args:
+    #             cmds.setAttr(obj + attr, lock=True, keyable=hide)
 
-        # if additional arguments are passed, they are assumed to be locked
-        if args:
-            for attr in args:
-                cmds.setAttr(obj + attr, lock=True, keyable=attr_keyable)
+
+def reset_transforms(nodes, force=False):
+    nodes = nUtil.ensure_list(nodes)
+
+    for node in nodes:
+        for attr, val in zip(attributes[:-1], defaults):  # Don't care about vis
+            try:
+                cmds.setAttr('{}.{}'.format(node, attr), val)
+            except RuntimeError:
+                # attribute locked
+                if force:
+                    lock_hide(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, False)
+                    cmds.setAttr(node + attr, val)
 
 
 # TODO: Kwargs: min_value, max_value, default_value, keyable, channelbox, enum_names
@@ -108,9 +150,9 @@ def create_attr(attribute_name, attribute_type, input_object=None,
 
     # Checks to see if the attribute already exists (might not be visible)
     if cmds.attributeQuery(attribute_name, node=input_object, exists=True):
-        cmds.warning(
-                'Attribute already exists on object:"{}".  If not found in the '
-                'channelbox, check the Channel Control.'.format(input_object))
+        raise AttributeError(
+            'Attribute already exists on object:"{}".  If not found in the '
+            'channelbox, check the Channel Control.'.format(input_object))
         return
 
     compound_types = ('euler', 'double3')
@@ -297,6 +339,8 @@ class AttributeWidget(QtWidgets.QFrame):
         lock_unlock_layout.addWidget(self.hide_radio)
         lock_unlock_layout.addWidget(self.show_radio)
 
+    # TODO: Literally has no methods... Does nothing
+
 
 class AddAttributesWidget(QtWidgets.QFrame):
 
@@ -480,11 +524,11 @@ class AddAttributesWidget(QtWidgets.QFrame):
         input_object = cmds.ls(selection=True)
         try:
             min_value = float(self.min_value_line_edit.text())
-        except:
+        except ValueError:
             min_value = None
         try:
             max_value = float(self.max_value_line_edit.text())
-        except:
+        except ValueError:
             max_value = None
         default_value = float(self.default_value_line_edit.text())
         keyable = self.attr_keyable_check.isChecked()
@@ -593,4 +637,4 @@ class AddAttributesWidget(QtWidgets.QFrame):
                 reorderAttributes = globals()['reorderAttributes']
             reorderAttributes.ui.show()
         except IOError:
-            raise Exception('PathError(custom): Module not found in path!')
+            raise IOError('PathError(custom): Module not found in path!')
