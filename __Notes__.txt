@@ -1,6 +1,10 @@
 Notes for changes from uses of these tools in practical application and day-to-day use.
 -----------------------------------------------------
 
+Maya 2020:
+----------
+- Adjustments to new matrix nodes and methods
+
 LimbBuilderTool:
 ----------------
 - Age old twist joint issue solved!: http://charactersetup.com/tutorial_rollJoints.html
@@ -8,8 +12,7 @@ LimbBuilderTool:
 
 RenamerLibrary:
 ---------------
-- Still has issues with renaming on repeat objects, not causing long-name issues.  Do tests before finalizing anything else.
-- Suffix adding only affects first selection?
+**Clean**
 
 CurveAssignment:
 ----------------
@@ -18,12 +21,9 @@ CurveAssignment:
 - Widget hierarchy list of offsets needs an 'X' button to remove unwanted parts.
   - Also seems to be mostly broken, performing the operation 3 times? (might be related to number of hierarchy groups)
   - ***Subclass the operation to allow for easier widget manipulation and isolated methods
-- Widget correctly snaps to selection, but does not iterate over full list if more than one object is selected.
-- Widget should have an overrideName checkbox as an option.
-- New Curve types:
-  - double/2-sided arrow
-- add_curve_shape should be renamed and repurposed
-  - if no transform node is given, create one itself
+*- Widget correctly snaps to selection, but does not iterate over full list if more than one object is selected.
+*- Widget should have an overrideName checkbox as an option.
+
 
 AttributeManipulation:
 ----------------------
@@ -35,10 +35,7 @@ AttributeManipulation:
 
 CreateNodeLibrary:
 ------------------
-- Add 'composeMatrix' to node options and widget
-- Custom double to double3 node
-  - Converts single input to a triple output (parented under single attr) [pxrToFloat3 node as reference]
-  - Create script node, have backup that is just attrs added onto a unitConversion node (to avoid 'unknown' as type)
+**Clean**
 
 BasicTools:
 -----------

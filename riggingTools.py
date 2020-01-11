@@ -2,7 +2,7 @@ import maya.cmds as cmds
 import pymel.core as pm
 # from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
-from maya_tools.widgets import mayaFrameWidget
+from maya_tools import mayaFrameWidget
 from maya_tools import fileDataIO as fio
 from master_rigger import createNodeLibrary as node
 from master_rigger import curve_assignment as crv
@@ -321,13 +321,13 @@ def create_pv_guide(ik_base, ik_pivot, ik_end):
     cmds.parent(start_to_end, hierarchy_node)
 
 
-class RivetWidget(QtWidgets.QFrame):
+class RivetWidget(mayaFrameWidget.MayaFrameWidget):
 
     enabled = 'background-color : rgb(37, 38, 40);'
     disabled = 'background-color : rgb(57, 58, 60);'
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -430,7 +430,7 @@ class RivetWidget(QtWidgets.QFrame):
 class ConstraintWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -495,10 +495,10 @@ class ConstraintWidget(mayaFrameWidget.MayaFrameWidget):
             scale=s)
 
 
-class VectorWidget(QtWidgets.QFrame):
+class VectorWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -608,7 +608,7 @@ class VectorWidget(QtWidgets.QFrame):
 class PVWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)

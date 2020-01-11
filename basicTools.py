@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools import mayaFrameWidget
 import renamerLibrary as lib
 
 from master_rigger import cmdsTranslator as nUtil
@@ -332,10 +333,10 @@ def update_isolated_nodes(nodes=[], panel=''):
     return nodes
 
 
-class OffsetNodeWidget(QtWidgets.QFrame):
+class OffsetNodeWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -420,10 +421,10 @@ class OffsetNodeWidget(QtWidgets.QFrame):
         offset_joint_hierarchy(joints)
 
 
-class TransformWidget(QtWidgets.QFrame):
+class TransformWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -485,13 +486,13 @@ class TransformWidget(QtWidgets.QFrame):
         bake_button.clicked.connect(bake_transforms_up)
 
 
-class IsolateSelectionWidget(QtWidgets.QFrame):
+class IsolateSelectionWidget(mayaFrameWidget.MayaFrameWidget):
 
     panel_items = {}
     snapshotted_sets = {}
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)

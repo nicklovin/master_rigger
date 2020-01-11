@@ -3,6 +3,7 @@ import pymel.core as pm
 from string import ascii_uppercase
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools import mayaFrameWidget
 import Splitter
 
 LETTERS_INDEX = {index: letter for index, letter in
@@ -352,9 +353,9 @@ def clear_end_digits(input_objects=[]):
     return name_return_list
 
 
-class NamingWidget(QtWidgets.QFrame):
+class NamingWidget(mayaFrameWidget.MayaFrameWidget):
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle('Name Tool')
         self.setMinimumHeight(285)

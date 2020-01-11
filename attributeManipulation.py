@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools import mayaFrameWidget
 from master_rigger import Splitter
 from master_rigger import cmdsTranslator as nUtil
 
@@ -252,10 +253,10 @@ def connect_attr(source, target, **kwargs):
             raise err
 
 
-class AttributeWidget(QtWidgets.QFrame):
+class AttributeWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
@@ -342,7 +343,7 @@ class AttributeWidget(QtWidgets.QFrame):
     # TODO: Literally has no methods... Does nothing
 
 
-class AddAttributesWidget(QtWidgets.QFrame):
+class AddAttributesWidget(mayaFrameWidget.MayaFrameWidget):
 
     attribute_types_dict = {
         'Angle': 'doubleAngle',
@@ -374,7 +375,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
     enum_index_layouts = {}
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().setContentsMargins(1, 1, 1, 1)
@@ -460,7 +461,7 @@ class AddAttributesWidget(QtWidgets.QFrame):
         attribute_extras_layout.addWidget(self.default_value_line_edit)
 
         # Enum Layouts ---------------------------------------------------------
-        self.enum_frame = QtWidgets.QFrame()
+        self.enum_frame = mayaFrameWidget.MayaFrameWidget()
         self.enum_frame.setStyleSheet('background-color : rgb(27, 28, 30);')
         attribute_enum_layout.layout().addWidget(self.enum_frame)
         self.enum_frame.setLayout(QtWidgets.QVBoxLayout())

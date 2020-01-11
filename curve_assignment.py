@@ -2,6 +2,7 @@ import maya.cmds as cmds
 # from pprint import pprint
 from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools import mayaFrameWidget
 from master_rigger import Splitter
 from master_rigger import basicTools as tool  # If possible, remove this
 from master_rigger.data import curve_data
@@ -184,7 +185,7 @@ def set_control_color(rgb_input, input_object=None):
 
 # TODO: Kwargs: transform_node?, color, off_color, shape_offset
 def add_curve_shape(shape_choice, transform_node=None, color=None,
-                    off_color=False, shape_offset=(0, 0, 0)):
+                    off_color=False, shape_offset=(0, 0, 0), **kwargs):
     """
     Creates a shape node that is input into a transform node.  This will turn a
     transform node into a control shape, allowing for more flexibility in
@@ -217,7 +218,8 @@ def add_curve_shape(shape_choice, transform_node=None, color=None,
             transform_node = selection[0]
 
     if not transform_node:
-        transform_node = cmds.createNode('transform', name=shape_choice)
+        name = kwargs.get('name') or shape_choice
+        transform_node = cmds.createNode('transform', name=name)
 
     curve_transform = curve_library[shape_choice]()
     curve_shape = cmds.listRelatives(curve_transform, shapes=True)
@@ -286,7 +288,7 @@ def normalize_ctrl_scale(input_object=None):
         cmds.xform(input_object + '.cv[0:]', scale=ctrl_scale)
 
 
-class ControlCurveWidget(QtWidgets.QFrame):
+class ControlCurveWidget(mayaFrameWidget.MayaFrameWidget):
 
     offset_index_list = [
         'ZERO',
@@ -311,7 +313,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
     current_assign_color = [1.0, 1.0, 0.0]
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
@@ -351,6 +353,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
         control_name_label = QtWidgets.QLabel('Control Name:')
         self.control_name_line_edit = QtWidgets.QLineEdit('')
         self.control_name_line_edit.setPlaceholderText('Arm_L_wrist_CTRL')
+        self.control_name_override_checkbox = QtWidgets.QCheckBox('Override Name')
 
         reg_ex = QtCore.QRegExp('^(?!@$^_)[a-zA-Z_0-9]+')
         text_validator = QtGui.QRegExpValidator(reg_ex,
@@ -359,6 +362,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
 
         name_layout.addWidget(control_name_label)
         name_layout.addWidget(self.control_name_line_edit)
+        name_layout.addWidget(self.control_name_override_checkbox)
 
         # Shape type selection
         shape_type_label = QtWidgets.QLabel('Shape Type:')
@@ -370,7 +374,7 @@ class ControlCurveWidget(QtWidgets.QFrame):
         shape_selection_layout.addWidget(self.shape_type_combo)
 
         # Offset Hierarchy options
-        self.offset_frame = QtWidgets.QFrame()
+        self.offset_frame = mayaFrameWidget.MayaFrameWidget()
         self.offset_frame.setStyleSheet('background-color : rgb(27, 28, 30);')
         offset_hierarchy_layout.layout().addWidget(self.offset_frame)
         self.offset_frame.setLayout(QtWidgets.QVBoxLayout())
@@ -503,33 +507,32 @@ class ControlCurveWidget(QtWidgets.QFrame):
         name = str(self.control_name_line_edit.text()).strip()
         shape = self.shape_type_combo.currentText()
         color = self.current_assign_color
+        override_name = self.control_name_override_checkbox.isChecked()
 
-        try:
-            selected = cmds.ls(selection=True)[0]
-        except:
-            selected = None
+        selected = cmds.ls(selection=True)
+        if len(selected) > 1 and not override_name:
+            parts = name.rsplit('_', 1)
+            name = '{}_%02d_{}'.format(parts[0], parts[-1])
 
-        if on_selected:
-            transform_node = cmds.ls(selection=True)[0]
-            add_curve_shape(
-                shape_choice=shape,
-                transform_node=transform_node,
-                color=color
-            )
-            return  # Don't build hierarchy if just adding shape
-        else:
-            transform_node = cmds.group(empty=True, name=name)
-            add_curve_shape(
-                shape_choice=shape,
-                transform_node=transform_node,
-                color=color
-            )
-
-        if selected:
-            tool.match_transformations(source=selected, target=transform_node)
-
-        if self.use_hierarchy_checkbox.isChecked():
-            self.build_hierarchy(control_object=transform_node)
+        for current_control in selected:
+            if on_selected:
+                add_curve_shape(
+                    shape_choice=shape,
+                    transform_node=current_control,
+                    color=color
+                )
+            else:
+                if override_name:
+                    parts = current_control.split('_', 1)
+                    name = '{}_CTL'.format(parts[0])
+                new_control = add_curve_shape(
+                    shape_choice=shape,
+                    color=color,
+                    name=name
+                )
+                tool.match_transformations(source=current_control, target=new_control)
+                if self.use_hierarchy_checkbox.isChecked():
+                    self.build_hierarchy(control_object=new_control)
 
     def add_custom_offset(self):
         new_custom_offset_layout = QtWidgets.QHBoxLayout()

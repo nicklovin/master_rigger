@@ -3,6 +3,7 @@ import maya.cmds as cmds
 import pymel.core as pm
 # from functools import partial
 from PySide2 import QtWidgets, QtCore, QtGui
+from maya_tools import mayaFrameWidget
 # import re
 
 import Splitter
@@ -134,10 +135,10 @@ def duplicate_node_connections(find, replace, nodes=[]):
                     cmds.connectAttr(sourceAttr, targetAttr, force=True)
 
 
-class NodeWidget(QtWidgets.QFrame):
+class NodeWidget(mayaFrameWidget.MayaFrameWidget):
 
     def __init__(self):
-        QtWidgets.QFrame.__init__(self)
+        mayaFrameWidget.MayaFrameWidget.__init__(self)
 
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
